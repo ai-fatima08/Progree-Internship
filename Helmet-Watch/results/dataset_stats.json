@@ -1,0 +1,26 @@
+{
+  "classes": ["helmet", "no_helmet"],
+  "splits": {
+    "train": {
+      "images": 3555,
+      "boxes": {
+        "helmet": 6206,
+        "no_helmet": 3134
+      }
+    },
+    "valid": {
+      "images": 127,
+      "boxes": {
+        "helmet": 185,
+        "no_helmet": 115
+      }
+    },
+    "test": {
+      "images": 64,
+      "boxes": {
+        "helmet": 124,
+        "no_helmet": 63
+      }
+    }
+  }
+}
