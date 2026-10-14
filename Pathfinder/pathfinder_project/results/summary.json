@@ -1,0 +1,226 @@
+{
+ "full": [
+  {
+   "category": "da2",
+   "algorithm": "A*",
+   "runs": 36,
+   "solved": 36,
+   "mean_steps": 295.25,
+   "mean_runtime_ms": 16.9958,
+   "mean_expanded": 5210.5556,
+   "mean_expanded_density": 0.333,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "da2",
+   "algorithm": "Dijkstra",
+   "runs": 36,
+   "solved": 36,
+   "mean_steps": 295.25,
+   "mean_runtime_ms": 41.4749,
+   "mean_expanded": 13544.1667,
+   "mean_expanded_density": 0.865,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "dao",
+   "algorithm": "A*",
+   "runs": 36,
+   "solved": 36,
+   "mean_steps": 380.6111,
+   "mean_runtime_ms": 38.3026,
+   "mean_expanded": 12935.7778,
+   "mean_expanded_density": 0.3628,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "dao",
+   "algorithm": "Dijkstra",
+   "runs": 36,
+   "solved": 36,
+   "mean_steps": 380.6111,
+   "mean_runtime_ms": 97.0029,
+   "mean_expanded": 31132.5833,
+   "mean_expanded_density": 0.8326,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "maze",
+   "algorithm": "A*",
+   "runs": 90,
+   "solved": 90,
+   "mean_steps": 3292.1,
+   "mean_runtime_ms": 585.6823,
+   "mean_expanded": 167396.7667,
+   "mean_expanded_density": 0.8104,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "maze",
+   "algorithm": "Dijkstra",
+   "runs": 90,
+   "solved": 90,
+   "mean_steps": 3292.1,
+   "mean_runtime_ms": 620.321,
+   "mean_expanded": 184739.9111,
+   "mean_expanded_density": 0.8905,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "random",
+   "algorithm": "A*",
+   "runs": 105,
+   "solved": 105,
+   "mean_steps": 628.2857,
+   "mean_runtime_ms": 128.371,
+   "mean_expanded": 38315.181,
+   "mean_expanded_density": 0.2243,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "random",
+   "algorithm": "Dijkstra",
+   "runs": 105,
+   "solved": 105,
+   "mean_steps": 628.2857,
+   "mean_runtime_ms": 581.4136,
+   "mean_expanded": 168737.6381,
+   "mean_expanded_density": 0.9034,
+   "mean_gap": 0.0
+  }
+ ],
+ "windows": [
+  {
+   "category": "da2",
+   "algorithm": "A*",
+   "runs": 12,
+   "solved": 12,
+   "mean_steps": 51.4167,
+   "mean_runtime_ms": 1.2098,
+   "mean_expanded": 512.25,
+   "mean_expanded_density": 0.443,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "da2",
+   "algorithm": "Dijkstra",
+   "runs": 12,
+   "solved": 12,
+   "mean_steps": 51.4167,
+   "mean_runtime_ms": 1.8363,
+   "mean_expanded": 944.25,
+   "mean_expanded_density": 0.8482,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "da2",
+   "algorithm": "Q-Learning",
+   "runs": 12,
+   "solved": 12,
+   "mean_steps": 52.0833,
+   "mean_runtime_ms": 195.1882,
+   "mean_expanded": 1084.4167,
+   "mean_expanded_density": 0.9772,
+   "mean_gap": 0.0116
+  },
+  {
+   "category": "dao",
+   "algorithm": "A*",
+   "runs": 12,
+   "solved": 12,
+   "mean_steps": 42.25,
+   "mean_runtime_ms": 0.9862,
+   "mean_expanded": 384.0833,
+   "mean_expanded_density": 0.2888,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "dao",
+   "algorithm": "Dijkstra",
+   "runs": 12,
+   "solved": 12,
+   "mean_steps": 42.25,
+   "mean_runtime_ms": 2.2589,
+   "mean_expanded": 1167.0833,
+   "mean_expanded_density": 0.8651,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "dao",
+   "algorithm": "Q-Learning",
+   "runs": 12,
+   "solved": 12,
+   "mean_steps": 42.5833,
+   "mean_runtime_ms": 168.3318,
+   "mean_expanded": 1326.5,
+   "mean_expanded_density": 0.9837,
+   "mean_gap": 0.0088
+  },
+  {
+   "category": "maze",
+   "algorithm": "A*",
+   "runs": 30,
+   "solved": 30,
+   "mean_steps": 60.8,
+   "mean_runtime_ms": 0.7287,
+   "mean_expanded": 316.7333,
+   "mean_expanded_density": 0.2545,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "maze",
+   "algorithm": "Dijkstra",
+   "runs": 30,
+   "solved": 30,
+   "mean_steps": 60.8,
+   "mean_runtime_ms": 1.4348,
+   "mean_expanded": 729.6333,
+   "mean_expanded_density": 0.5323,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "maze",
+   "algorithm": "Q-Learning",
+   "runs": 30,
+   "solved": 30,
+   "mean_steps": 61.6667,
+   "mean_runtime_ms": 187.8546,
+   "mean_expanded": 890.9333,
+   "mean_expanded_density": 0.6474,
+   "mean_gap": 0.0153
+  },
+  {
+   "category": "random",
+   "algorithm": "A*",
+   "runs": 35,
+   "solved": 35,
+   "mean_steps": 44.0286,
+   "mean_runtime_ms": 0.6661,
+   "mean_expanded": 255.8857,
+   "mean_expanded_density": 0.2167,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "random",
+   "algorithm": "Dijkstra",
+   "runs": 35,
+   "solved": 35,
+   "mean_steps": 44.0286,
+   "mean_runtime_ms": 1.9009,
+   "mean_expanded": 1003.9714,
+   "mean_expanded_density": 0.8136,
+   "mean_gap": 0.0
+  },
+  {
+   "category": "random",
+   "algorithm": "Q-Learning",
+   "runs": 35,
+   "solved": 35,
+   "mean_steps": 44.4286,
+   "mean_runtime_ms": 192.2518,
+   "mean_expanded": 1185.9429,
+   "mean_expanded_density": 0.9646,
+   "mean_gap": 0.0112
+  }
+ ]
+}

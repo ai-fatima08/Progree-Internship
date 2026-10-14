@@ -1,0 +1,1707 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1" />
+    <title>Maze Pathfinder ... A*, Dijkstra, Q-Learning</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <style>
+      :root {
+        --bg: #2b103c;
+        --panel: rgba(172, 145, 192, 0.1);
+        --line: rgba(172, 145, 192, 0.28);
+        --tx: #f3ecfb;
+        --mut: #c4b0d6;
+        --teal: #7be3c6;
+        --coral: #ff7fa6;
+        --amber: #ffd27a;
+        --vio: #8f529b;
+        --p1: #2b103c;
+        --p2: #3d2a5d;
+        --p3: #572866;
+        --p4: #8f529b;
+        --p5: #ac91c0;
+        --head: Fredoka, 'Inter', system-ui, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, sans-serif;
+        color: var(--tx);
+        min-height: 100vh;
+        background: linear-gradient(
+          180deg,
+          #2b103c 0%,
+          #3d2a5d 28%,
+          #572866 62%,
+          #8f529b 90%,
+          #ac91c0 100%
+        );
+        background-attachment: fixed;
+      }
+      .wrap {
+        max-width: 1320px;
+        margin: auto;
+        padding: 22px 18px 40px;
+      }
+      h1 {
+        font-family: var(--head);
+        font-size: clamp(28px, 5vw, 52px);
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: -1px;
+        padding-bottom: 0.08em;
+        background: linear-gradient(90deg, #d9e2ff, #ac91c0 60%, #f0c9ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .sub {
+        color: var(--mut);
+        margin: 6px 0 16px;
+        max-width: 680px;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 310px minmax(0, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 16px;
+        backdrop-filter: blur(10px);
+      }
+      .card h3 {
+        margin: 0 0 10px;
+        font-family: var(--head);
+        font-size: 16px;
+        font-weight: 600;
+        color: #dfe6ff;
+      }
+      .row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      button,
+      select,
+      label.file {
+        font: inherit;
+        font-size: 13px;
+        color: var(--tx);
+        background: rgba(172, 145, 192, 0.14);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 11px;
+        cursor: pointer;
+        transition: 0.15s;
+      }
+      select option {
+        color: #2b103c;
+      }
+      button:hover:not(:disabled),
+      label.file:hover {
+        background: rgba(172, 145, 192, 0.28);
+        transform: translateY(-1px);
+      }
+      button:focus-visible,
+      select:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--teal);
+        outline-offset: 2px;
+      }
+      button.on {
+        background: linear-gradient(135deg, #8f529b, #572866);
+        box-shadow: inset 0 0 0 1.5px #ac91c0;
+        border-color: transparent;
+      }
+      button.go {
+        background: linear-gradient(135deg, #ac91c0, #8f529b);
+        color: #2b103c;
+        font-family: var(--head);
+        font-weight: 600;
+        border: 0;
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+        box-shadow: 0 8px 24px -8px #8f529b;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      a.dlbtn {
+        font-size: 13px;
+        color: var(--tx);
+        text-decoration: none;
+        background: rgba(172, 145, 192, 0.14);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 7px 11px;
+        display: inline-block;
+      }
+      input[type='range'] {
+        width: 100%;
+        accent-color: var(--coral);
+      }
+      .lbl {
+        font-size: 12px;
+        color: var(--mut);
+        display: flex;
+        justify-content: space-between;
+        margin: 6px 0 2px;
+      }
+      .stage {
+        padding: 10px;
+      }
+      .cvwrap {
+        overflow: auto;
+        max-height: 78vh;
+        border-radius: 12px;
+        background: #241033;
+      }
+      canvas.maze {
+        display: block;
+        margin: auto;
+        max-width: 100%;
+        height: auto;
+        border-radius: 12px;
+        cursor: crosshair;
+        touch-action: none;
+        image-rendering: pixelated;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-top: 12px;
+      }
+      @media (max-width: 600px) {
+        .stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .stat {
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(43, 16, 60, 0.55);
+        border: 1px solid var(--line);
+      }
+      .stat b {
+        display: block;
+        font-family: var(--head);
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .stat span {
+        font-size: 12px;
+        color: var(--mut);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 7px 8px;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        color: var(--mut);
+        font-weight: 600;
+      }
+      .scroll {
+        max-height: 260px;
+        overflow: auto;
+      }
+      .legend {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        font-size: 12px;
+        color: var(--mut);
+        margin-top: 10px;
+      }
+      .legend i {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 3px;
+        margin-right: 5px;
+        vertical-align: -1px;
+      }
+      .note {
+        font-size: 12px;
+        color: var(--mut);
+        margin: 8px 0 0;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 99px;
+        border: 1px solid var(--line);
+        color: var(--mut);
+      }
+      .badge.ok {
+        color: #2b103c;
+        background: var(--teal);
+        border-color: transparent;
+        font-weight: 600;
+      }
+      .figs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 14px;
+      }
+      .figs figure {
+        margin: 0;
+        background: rgba(43, 16, 60, 0.55);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 10px;
+      }
+      .figs img {
+        width: 100%;
+        border-radius: 8px;
+        background: #fff;
+      }
+      .figs figcaption {
+        font-size: 12px;
+        color: var(--mut);
+        margin-top: 6px;
+      }
+      .warn {
+        background: rgba(255, 200, 87, 0.12);
+        border: 1px solid rgba(255, 200, 87, 0.4);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 12.5px;
+        margin-top: 10px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+
+      /* centered text alignment */
+      .wrap {
+        text-align: center;
+      }
+      h1 {
+        text-align: center;
+      }
+      .sub {
+        text-align: center;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .tabs {
+        justify-content: center;
+      }
+      .card h3 {
+        justify-content: center;
+        text-align: center;
+      }
+      .row {
+        justify-content: center;
+      }
+      .note {
+        text-align: center;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .legend {
+        justify-content: center;
+        text-align: center;
+      }
+      .stat {
+        text-align: center;
+      }
+      .warn {
+        text-align: center;
+      }
+      .figs figcaption {
+        text-align: center;
+      }
+      .card > p.note,
+      .card .note {
+        text-align: center;
+      }
+      .stage .note {
+        text-align: center;
+      }
+      select {
+        text-align: center;
+        text-align-last: center;
+      }
+      .lbl {
+        justify-content: space-between;
+      }
+      canvas:not(.maze) {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      table,
+      th,
+      td {
+        text-align: center;
+      }
+      td:first-child,
+      th:first-child {
+        text-align: center;
+      }
+      .grid {
+        align-items: start;
+      }
+      .grid > div:last-child {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #ac91c0 transparent;
+        padding-bottom: 2px;
+      }
+      @media (max-width: 900px) {
+        .grid > div:last-child {
+          position: static;
+          max-height: none;
+          overflow: visible;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useState, useRef, useEffect, useCallback, useMemo } = React;
+      const API = location.protocol === 'file:' ? 'http://localhost:5000' : '';
+      const N4 = [
+        [0, 1],
+        [1, 0],
+        [0, -1],
+        [-1, 0],
+      ];
+      const Q_MAX_FREE = 2500;
+
+      /* ---------------- algorithms (from scratch, run in the browser) ---------------- */
+      class Heap {
+        constructor() {
+          this.a = [];
+        }
+        push(k, v) {
+          const a = this.a;
+          a.push([k, v]);
+          let i = a.length - 1;
+          while (i > 0) {
+            const p = (i - 1) >> 1;
+            if (a[p][0] <= a[i][0]) break;
+            [a[p], a[i]] = [a[i], a[p]];
+            i = p;
+          }
+        }
+        pop() {
+          const a = this.a,
+            t = a[0],
+            l = a.pop();
+          if (a.length) {
+            a[0] = l;
+            let i = 0;
+            for (;;) {
+              let m = i,
+                L = 2 * i + 1,
+                R = L + 1;
+              if (L < a.length && a[L][0] < a[m][0]) m = L;
+              if (R < a.length && a[R][0] < a[m][0]) m = R;
+              if (m === i) break;
+              [a[m], a[i]] = [a[i], a[m]];
+              i = m;
+            }
+          }
+          return t;
+        }
+        get size() {
+          return this.a.length;
+        }
+      }
+      const rebuild = (par, s, t) => {
+        const p = [];
+        for (let u = t; u !== -1; u = par[u]) p.push(u);
+        p.reverse();
+        return p[0] === s ? p : [];
+      };
+      const pack = (name, g, order, path, t0, extra = {}) => {
+        const free = g.reduce((n, x) => n + (x ? 0 : 1), 0);
+        return {
+          algorithm: name,
+          found: path.length > 0,
+          order,
+          path,
+          path_len: Math.max(path.length - 1, 0),
+          runtime_ms: performance.now() - t0,
+          expanded_nodes: order.length,
+          expanded_density: order.length / free,
+          free_cells: free,
+          ...extra,
+        };
+      };
+      function search(g, R, C, s, t, useH) {
+        const t0 = performance.now(),
+          n = R * C,
+          dist = new Float64Array(n).fill(Infinity),
+          par = new Int32Array(n).fill(-1),
+          closed = new Uint8Array(n),
+          order = [];
+        const H = (i) =>
+          useH
+            ? Math.abs(((i / C) | 0) - ((t / C) | 0)) +
+              Math.abs((i % C) - (t % C))
+            : 0;
+        const pq = new Heap();
+        dist[s] = 0;
+        pq.push(H(s), s);
+        while (pq.size) {
+          const [, u] = pq.pop();
+          if (closed[u]) continue;
+          closed[u] = 1;
+          order.push(u);
+          if (u === t) break;
+          const r = (u / C) | 0,
+            c = u % C;
+          for (const [dr, dc] of N4) {
+            const nr = r + dr,
+              nc = c + dc;
+            if (nr < 0 || nc < 0 || nr >= R || nc >= C) continue;
+            const v = nr * C + nc;
+            if (g[v] || closed[v]) continue;
+            const nd = dist[u] + 1;
+            if (nd < dist[v]) {
+              dist[v] = nd;
+              par[v] = u;
+              pq.push(nd + H(v), v);
+            }
+          }
+        }
+        return pack(
+          useH ? 'A*' : 'Dijkstra',
+          g,
+          order,
+          closed[t] ? rebuild(par, s, t) : [],
+          t0,
+        );
+      }
+      /* tabular Q-Learning: reward +100 goal, -1 step, -5 wall bump; eps-greedy; 
+      stops when greedy path is stable */
+      function qlearn(g, R, C, s, t) {
+        const t0 = performance.now(),
+          idx = new Int32Array(R * C).fill(-1),
+          free = [];
+        for (let i = 0; i < R * C; i++)
+          if (!g[i]) {
+            idx[i] = free.length;
+            free.push(i);
+          }
+        const n = free.length;
+        if (n > Q_MAX_FREE)
+          return {
+            ...pack('Q-Learning', g, [], [], t0),
+            skipped: true,
+            message: `Q-Learning is limited to ${Q_MAX_FREE} free cells (this grid has ${n}). Use a smaller maze.`,
+          };
+        const nxt = new Int32Array(n * 4),
+          bump = new Uint8Array(n * 4);
+        for (let k = 0; k < n; k++) {
+          const r = (free[k] / C) | 0,
+            c = free[k] % C;
+          for (let a = 0; a < 4; a++) {
+            const nr = r + N4[a][0],
+              nc = c + N4[a][1];
+            if (nr >= 0 && nc >= 0 && nr < R && nc < C && idx[nr * C + nc] >= 0)
+              nxt[k * 4 + a] = idx[nr * C + nc];
+            else {
+              nxt[k * 4 + a] = k;
+              bump[k * 4 + a] = 1;
+            }
+          }
+        }
+        const Q = new Float32Array(n * 4),
+          s0 = idx[s],
+          sg = idx[t],
+          seen = new Uint8Array(n),
+          order = [s],
+          maxSteps = Math.max(200, 4 * n),
+          EP = 4000,
+          DEC = 250,
+          alpha = 0.5,
+          gamma = 0.99;
+        seen[s0] = 1;
+        const best = (k) => {
+          let a = 0;
+          for (let j = 1; j < 4; j++) if (Q[k * 4 + j] > Q[k * 4 + a]) a = j;
+          return a;
+        };
+        const greedy = () => {
+          const p = [s0],
+            vis = new Set([s0]);
+          let cur = s0;
+          while (cur !== sg && p.length <= n) {
+            cur = nxt[cur * 4 + best(cur)];
+            if (vis.has(cur)) return null;
+            vis.add(cur);
+            p.push(cur);
+          }
+          return cur === sg ? p : null;
+        };
+        let steps = 0,
+          ep = 0,
+          stable = 0,
+          last = null,
+          bestP = null;
+        const curve = [];
+        for (ep = 1; ep <= EP; ep++) {
+          const eps = Math.max(0.05, 1 - (0.95 * ep) / DEC);
+          let cur = s0,
+            used = 0;
+          for (; used < maxSteps; ) {
+            used++;
+            const a = Math.random() < eps ? (Math.random() * 4) | 0 : best(cur),
+              j = cur * 4 + a,
+              v = nxt[j];
+            let rw = sg === v ? 100 : bump[j] ? -5 : -1;
+            let m = Q[v * 4];
+            for (let q = 1; q < 4; q++) if (Q[v * 4 + q] > m) m = Q[v * 4 + q];
+            Q[j] += alpha * ((v === sg ? rw : rw + gamma * m) - Q[j]);
+            steps++;
+            if (!seen[v]) {
+              seen[v] = 1;
+              order.push(free[v]);
+            }
+            cur = v;
+            if (cur === sg) break;
+          }
+          if (cur === sg) curve.push(used);
+          if (ep % 10 === 0) {
+            const gp = greedy();
+            if (gp) {
+              bestP = gp;
+              const L = gp.length - 1;
+              stable = L === last ? stable + 1 : 0;
+              last = L;
+              if (stable >= 6) break;
+            } else {
+              stable = 0;
+              last = null;
+            }
+            if (performance.now() - t0 > 20000) break;
+          }
+        }
+        const gp = greedy() || bestP,
+          path = gp ? gp.map((k) => free[k]) : [];
+        return pack('Q-Learning', g, order, path, t0, {
+          episodes_run: Math.min(ep, EP),
+          training_steps: steps,
+          learning_curve: curve.filter(
+            (_, i) => i % Math.max(1, (curve.length / 200) | 0) === 0,
+          ),
+        });
+      }
+      const JS_ALGS = {
+        'A*': (g, R, C, s, t) => search(g, R, C, s, t, true),
+        Dijkstra: (g, R, C, s, t) => search(g, R, C, s, t, false),
+        'Q-Learning': qlearn,
+      };
+
+      /* ---------------- grid helpers ---------------- */
+      function maze(R, C) {
+        const g = new Uint8Array(R * C).fill(1),
+          st = [[1, 1]];
+        g[C + 1] = 0;
+        while (st.length) {
+          const [r, c] = st[st.length - 1],
+            o = N4.map(([a, b]) => [r + 2 * a, c + 2 * b, r + a, c + b])
+              .filter(
+                ([a, b]) =>
+                  a > 0 && b > 0 && a < R - 1 && b < C - 1 && g[a * C + b],
+              )
+              .sort(() => Math.random() - 0.5);
+          if (!o.length) {
+            st.pop();
+            continue;
+          }
+          const [a, b, wr, wc] = o[0];
+          g[wr * C + wc] = 0;
+          g[a * C + b] = 0;
+          st.push([a, b]);
+        }
+        return g;
+      }
+      const randomGrid = (R, C, d, s, t) => {
+        const g = new Uint8Array(R * C);
+        for (let i = 0; i < g.length; i++) g[i] = Math.random() < d ? 1 : 0;
+        g[s] = 0;
+        g[t] = 0;
+        return g;
+      };
+      function parseText(txt, name) {
+        if (name.endsWith('.map')) {
+          const L = txt.split(/\r?\n/);
+          const H = +L.find((l) => l.startsWith('height')).split(/\s+/)[1],
+            W = +L.find((l) => l.startsWith('width')).split(/\s+/)[1];
+          const rows = L.slice(L.findIndex((l) => l.trim() === 'map') + 1);
+          const R = Math.min(H, 600),
+            C = Math.min(W, 800),
+            g = new Uint8Array(R * C);
+          for (let r = 0; r < R; r++)
+            for (let c = 0; c < C; c++)
+              g[r * C + c] = '.GS'.includes(rows[r][c] || '@') ? 0 : 1;
+          return { R, C, g };
+        }
+        const rows = txt
+          .split(/\r?\n/)
+          .filter((l) => l.trim())
+          .map((l) => l.trim().split(/\s+/).map(Number));
+        const R = rows.length,
+          C = rows[0].length,
+          g = new Uint8Array(R * C);
+        rows.forEach((row, r) =>
+          row.forEach((v, c) => (g[r * C + c] = v ? 1 : 0)),
+        );
+        return { R, C, g };
+      }
+      const endpoints = (g, R, C) => {
+        const s = C + 1,
+          t = (R - 2) * C + C - 2;
+        if (R > 2 && C > 2 && !g[s] && !g[t]) return { s, t };
+        const f = [];
+        for (let i = 0; i < g.length; i++) if (!g[i]) f.push(i);
+        return { s: f[0], t: f[f.length - 1] };
+      };
+      const dl = (name, txt, type) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([txt], { type }));
+        a.download = name;
+        a.click();
+      };
+      const norm = (r, C) => ({
+        ...r,
+        order: r.order.map((p) => (Array.isArray(p) ? p[0] * C + p[1] : p)),
+        path: r.path.map((p) => (Array.isArray(p) ? p[0] * C + p[1] : p)),
+      });
+      const HUES = Array.from(
+        { length: 24 },
+        (_, i) => `hsla(${200 + (110 * i) / 23},80%,66%,.55)`,
+      );
+
+      function Playground({ api }) {
+        const [R, setR] = useState(21),
+          [C, setC] = useState(39);
+        const [g, setG] = useState(() => maze(21, 39)),
+          [pts, setPts] = useState({ s: 39 + 1, t: 19 * 39 + 37 });
+        const [tool, setTool] = useState('wall'),
+          [alg, setAlg] = useState('A*'),
+          [res, setRes] = useState(null),
+          [prog, setProg] = useState(0);
+        const [speed, setSpeed] = useState(12),
+          [dens, setDens] = useState(25),
+          [log, setLog] = useState([]),
+          [busy, setBusy] = useState(false),
+          [useApi, setUseApi] = useState(false);
+        const [cat, setCat] = useState('maze'),
+          [maps, setMaps] = useState([]),
+          [mapName, setMapName] = useState(''),
+          [mode, setMode] = useState('window'),
+          [scen, setScen] = useState(0),
+          [src, setSrc] = useState('Generated maze'),
+          [err, setErr] = useState('');
+        const cv = useRef(),
+          drag = useRef(false),
+          lc = useRef();
+        useEffect(() => {
+          if (api && api.available) setUseApi(true);
+        }, [api]);
+        useEffect(() => {
+          if (!(api && api.available)) return;
+          fetch(`${API}/api/maps?category=${cat}`)
+            .then((r) => r.json())
+            .then((m) => {
+              setMaps(m);
+              setMapName((n) =>
+                m.find((x) => x.name === n) ? n : m[0] ? m[0].name : '',
+              );
+            })
+            .catch(() => {});
+        }, [api, cat]);
+        const CELL = Math.max(
+          2,
+          Math.min(24, Math.floor(1000 / Math.max(R, C))),
+        );
+        const reset = () => {
+          setRes(null);
+          setProg(0);
+          setErr('');
+        };
+        const walls = useMemo(() => {
+          const o = document.createElement('canvas');
+          o.width = C * CELL;
+          o.height = R * CELL;
+          const x = o.getContext('2d');
+          x.fillStyle = '#241033';
+          x.fillRect(0, 0, o.width, o.height);
+          if (CELL >= 6) {
+            for (let i = 0; i < R * C; i++) {
+              const r = (i / C) | 0,
+                q = i % C;
+              x.fillStyle =
+                (r + q) % 2
+                  ? 'rgba(255,255,255,.025)'
+                  : 'rgba(255,255,255,.01)';
+              x.fillRect(q * CELL, r * CELL, CELL, CELL);
+            }
+          }
+          for (let i = 0; i < R * C; i++)
+            if (g[i]) {
+              const r = (i / C) | 0,
+                q = i % C;
+              if (CELL >= 8) {
+                const gr = x.createLinearGradient(
+                  q * CELL,
+                  r * CELL,
+                  q * CELL + CELL,
+                  r * CELL + CELL,
+                );
+                gr.addColorStop(0, '#AC91C0');
+                gr.addColorStop(1, '#572866');
+                x.fillStyle = gr;
+                x.beginPath();
+                x.roundRect(q * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2, 5);
+                x.fill();
+              } else {
+                x.fillStyle = '#6d4fd6';
+                x.fillRect(q * CELL, r * CELL, CELL, CELL);
+              }
+            }
+          return o;
+        }, [g, R, C, CELL]);
+        const expl = useRef({ cv: null, upto: 0, res: null, key: '' });
+        const draw = useCallback(() => {
+          const c = cv.current;
+          if (!c) return;
+          const x = c.getContext('2d');
+          c.width = C * CELL;
+          c.height = R * CELL;
+          x.drawImage(walls, 0, 0);
+          if (res && !res.skipped) {
+            const E = expl.current,
+              key = C + 'x' + R + 'x' + CELL;
+            if (E.res !== res || E.key !== key || prog < E.upto) {
+              E.cv = document.createElement('canvas');
+              E.cv.width = C * CELL;
+              E.cv.height = R * CELL;
+              E.upto = 0;
+              E.res = res;
+              E.key = key;
+            }
+            const ex = E.cv.getContext('2d'),
+              n = Math.min(prog, res.order.length),
+              m = res.order.length,
+              pad = CELL >= 8 ? 1 : 0,
+              sz = CELL - 2 * pad;
+            let lastB = -1;
+            for (let k = E.upto; k < n; k++) {
+              const b = Math.min(23, ((24 * k) / m) | 0);
+              if (b !== lastB) {
+                ex.fillStyle = HUES[b];
+                lastB = b;
+              }
+              const i = res.order[k];
+              ex.fillRect(
+                (i % C) * CELL + pad,
+                ((i / C) | 0) * CELL + pad,
+                sz,
+                sz,
+              );
+            }
+            E.upto = Math.max(E.upto, n);
+            x.drawImage(E.cv, 0, 0);
+          }
+          if (
+            res &&
+            !res.skipped &&
+            prog >= res.order.length &&
+            res.path.length > 1
+          ) {
+            x.save();
+            x.strokeStyle = '#ffd27a';
+            x.lineWidth = Math.max(2, CELL * 0.28);
+            x.lineJoin = x.lineCap = 'round';
+            if (CELL >= 8) {
+              x.shadowColor = '#ff7fa6';
+              x.shadowBlur = 14;
+            }
+            x.beginPath();
+            res.path.forEach((i, k) => {
+              const px = ((i % C) + 0.5) * CELL,
+                py = (((i / C) | 0) + 0.5) * CELL;
+              k ? x.lineTo(px, py) : x.moveTo(px, py);
+            });
+            x.stroke();
+            x.restore();
+          }
+          const dot = (i, col) => {
+            x.save();
+            x.fillStyle = col;
+            x.shadowColor = col;
+            x.shadowBlur = CELL >= 8 ? 14 : 0;
+            x.beginPath();
+            x.arc(
+              ((i % C) + 0.5) * CELL,
+              (((i / C) | 0) + 0.5) * CELL,
+              Math.max(CELL * 0.42, 3),
+              0,
+              7,
+            );
+            x.fill();
+            x.restore();
+          };
+          dot(pts.s, '#7be3c6');
+          dot(pts.t, '#ff7fa6');
+        }, [g, res, prog, pts, R, C, CELL, walls]);
+        useEffect(draw, [draw]);
+        const total = res && !res.skipped ? res.order.length : 0,
+          animDone = !res || prog >= total + 1;
+        useEffect(() => {
+          if (animDone) return;
+          const stp = Math.max(1, Math.round(((total / 180) * speed) / 12));
+          const id = setInterval(() => setProg((p) => p + stp), 30);
+          return () => clearInterval(id);
+        }, [res, speed, animDone]);
+        /* learning-curve mini chart */
+        useEffect(() => {
+          const c = lc.current;
+          if (!c) return;
+          const x = c.getContext('2d'),
+            W = (c.width = 520),
+            H = (c.height = 150);
+          x.clearRect(0, 0, W, H);
+          const d = res && res.learning_curve;
+          if (!d || d.length < 2) return;
+          const ly = (v) => Math.log10(v),
+            mn = ly(Math.max(1, res.path_len || Math.min(...d))),
+            mx = ly(Math.max(...d));
+          x.strokeStyle = '#ff7fa6';
+          x.lineWidth = 2;
+          x.beginPath();
+          d.forEach((v, i) => {
+            const px = 10 + (i / (d.length - 1)) * (W - 20),
+              py = H - 15 - ((ly(v) - mn) / Math.max(0.01, mx - mn)) * (H - 30);
+            i ? x.lineTo(px, py) : x.moveTo(px, py);
+          });
+          x.stroke();
+          x.fillStyle = '#c4b0d6';
+          x.font = '11px Inter,sans-serif';
+          x.fillText('steps per training episode (log) → optimal path', 10, 12);
+        }, [res]);
+        const cellAt = (e) => {
+          const b = cv.current.getBoundingClientRect(),
+            q = Math.floor(((e.clientX - b.left) / b.width) * C),
+            r = Math.floor(((e.clientY - b.top) / b.height) * R);
+          return q < 0 || r < 0 || q >= C || r >= R ? -1 : r * C + q;
+        };
+        const paint = (e) => {
+          const i = cellAt(e);
+          if (i < 0) return;
+          if (tool === 'start') {
+            if (i !== pts.t && !g[i]) setPts({ ...pts, s: i });
+            return;
+          }
+          if (tool === 'goal') {
+            if (i !== pts.s && !g[i]) setPts({ ...pts, t: i });
+            return;
+          }
+          if (tool === 'wall' || tool === 'erase') {
+            if (i === pts.s || i === pts.t) return;
+            const v = tool === 'wall' ? 1 : 0;
+            if (g[i] === v) return;
+            const n = g.slice();
+            n[i] = v;
+            setG(n);
+            reset();
+          }
+        };
+        const solveWith = async (name, grid = g, P = pts) => {
+          if (useApi) {
+            try {
+              const rows = [];
+              for (let r = 0; r < R; r++) {
+                let line = '';
+                const sub = grid.subarray(r * C, (r + 1) * C);
+                for (let q = 0; q < C; q++) line += sub[q] ? '1' : '0';
+                rows.push(line);
+              }
+              const resp = await fetch(API + '/api/solve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  rows: rows,
+                  start: [(P.s / C) | 0, P.s % C],
+                  goal: [(P.t / C) | 0, P.t % C],
+                  algo: name,
+                }),
+              });
+              const d = await resp.json();
+              if (d.error) throw new Error(d.error);
+              return norm(d, C);
+            } catch (e) {
+              setErr(
+                'Python backend failed (' +
+                  e.message +
+                  ') – used the browser engine instead.',
+              );
+              setUseApi(false);
+            }
+          }
+          return JS_ALGS[name](grid, R, C, P.s, P.t);
+        };
+        const add = (r, tag, ref) => {
+          if (r.skipped) return;
+          setLog((l) => [
+            ...l,
+            {
+              id: l.length + 1,
+              scenario: tag,
+              source: src,
+              algorithm: r.algorithm,
+              rows: R,
+              cols: C,
+              walls: g.reduce((a, b) => a + b, 0),
+              found: r.found,
+              steps: r.path_len,
+              optimality_gap:
+                ref && r.found ? +(r.path_len / ref - 1).toFixed(4) : '',
+              runtime_ms: +r.runtime_ms.toFixed(3),
+              expanded_nodes: r.expanded_nodes,
+              expanded_density: +r.expanded_density.toFixed(4),
+              episodes: r.episodes_run ?? '',
+              engine: useApi ? 'python' : 'browser',
+            },
+          ]);
+        };
+        const busyRun = async (fn) => {
+          setBusy(true);
+          setErr('');
+          await new Promise((r) => setTimeout(r, 40));
+          try {
+            await fn();
+          } finally {
+            setBusy(false);
+          }
+        };
+        const solve = () =>
+          busyRun(async () => {
+            const r = await solveWith(alg);
+            setRes(r);
+            setProg(0);
+            if (r.skipped) setErr(r.message);
+            else add(r, 'manual');
+          });
+        const compare = () =>
+          busyRun(async () => {
+            let last,
+              ref = null;
+            for (const a of ['A*', 'Dijkstra', 'Q-Learning']) {
+              const r = await solveWith(a);
+              if (a === 'A*') ref = r.path_len;
+              if (r.skipped) {
+                setErr(r.message);
+                continue;
+              }
+              add(r, 'compare', ref);
+              last = r;
+            }
+            setRes(last);
+            setProg(0);
+          });
+        const bench = () =>
+          busyRun(async () => {
+            for (const d of [0.1, 0.2, 0.3, 0.4])
+              for (let k = 0; k < 3; k++) {
+                const gg = randomGrid(R, C, d, pts.s, pts.t);
+                let ref = null;
+                for (const a of ['A*', 'Dijkstra', 'Q-Learning']) {
+                  const r = JS_ALGS[a](gg, R, C, pts.s, pts.t);
+                  if (a === 'A*') ref = r.path_len;
+                  if (r.skipped) continue;
+                  setLog((l) => [
+                    ...l,
+                    {
+                      id: l.length + 1,
+                      scenario: `density ${d * 100}% #${k + 1}`,
+                      source: 'random obstacles',
+                      algorithm: r.algorithm,
+                      rows: R,
+                      cols: C,
+                      walls: gg.reduce((x, y) => x + y, 0),
+                      found: r.found,
+                      steps: r.path_len,
+                      optimality_gap:
+                        ref && r.found
+                          ? +(r.path_len / ref - 1).toFixed(4)
+                          : '',
+                      runtime_ms: +r.runtime_ms.toFixed(3),
+                      expanded_nodes: r.expanded_nodes,
+                      expanded_density: +r.expanded_density.toFixed(4),
+                      episodes: r.episodes_run ?? '',
+                      engine: 'browser',
+                    },
+                  ]);
+                }
+              }
+          });
+        const setGrid = (rr, cc, grid, s, t, label) => {
+          setR(rr);
+          setC(cc);
+          setG(grid);
+          setPts({ s, t });
+          setSrc(label);
+          reset();
+        };
+        const newMaze = () => {
+          const rr = 21,
+            cc = 39;
+          const m = maze(rr, cc);
+          setGrid(rr, cc, m, cc + 1, (rr - 2) * cc + cc - 2, 'Generated maze');
+        };
+        const rnd = () => {
+          setG(randomGrid(R, C, dens / 100, pts.s, pts.t));
+          setSrc('Random obstacles ' + dens + '%');
+          reset();
+        };
+        const clear = () => {
+          setG(new Uint8Array(R * C));
+          setSrc('Empty grid');
+          reset();
+        };
+        const loadDataset = () =>
+          busyRun(async () => {
+            try {
+              const d = await (
+                await fetch(
+                  `${API}/api/map?name=${mapName}&mode=${mode}&size=40&scenario=${scen}`,
+                )
+              ).json();
+              if (d.error) throw new Error(d.error);
+              const grid = Uint8Array.from(
+                d.grid.join('').split('').map(Number),
+              );
+              setGrid(
+                d.rows,
+                d.cols,
+                grid,
+                d.start[0] * d.cols + d.start[1],
+                d.goal[0] * d.cols + d.goal[1],
+                `Moving AI: ${d.name} (${mode === 'window' ? '40×40 window' : 'full map ' + d.map_height + '×' + d.map_width}, pair ${scen + 1}) · shortest path = ${d.bfs_dist} steps`,
+              );
+            } catch (e) {
+              setErr('Could not load map: ' + e.message);
+            }
+          });
+        const onFile = (e) => {
+          const f = e.target.files[0];
+          if (!f) return;
+          f.text().then((t) => {
+            try {
+              const m = parseText(t, f.name);
+              const { s, t: tt } = endpoints(m.g, m.R, m.C);
+              setGrid(m.R, m.C, m.g, s, tt, 'File: ' + f.name);
+            } catch (err) {
+              setErr('Not a valid 0/1 grid .txt or Moving AI .map file');
+            }
+          });
+          e.target.value = '';
+        };
+        const png = () => {
+          cv.current.toBlob((b) => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(b);
+            a.download = 'path_visualization.png';
+            a.click();
+          });
+        };
+        const csv = () => {
+          const k = Object.keys(log[0]);
+          dl(
+            'pathfinding_log.csv',
+            [k.join(',')]
+              .concat(log.map((r) => k.map((x) => r[x]).join(',')))
+              .join('\n'),
+            'text/csv',
+          );
+        };
+        const Tb = ({ id, children }) => (
+          <button
+            className={tool === id ? 'on' : ''}
+            onClick={() => setTool(id)}>
+            {children}
+          </button>
+        );
+        const qBig = g.reduce((n, x) => n + (x ? 0 : 1), 0) > Q_MAX_FREE;
+        return (
+          <div className="grid">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {api && api.available && (
+                <div className="card">
+                  <h3>
+                    Moving AI maps{' '}
+                    <span className="badge ok">{api.count} maps</span>
+                  </h3>
+                  <div className="row">
+                    {api.categories.map((k) => (
+                      <button
+                        key={k.id}
+                        className={cat === k.id ? 'on' : ''}
+                        onClick={() => setCat(k.id)}>
+                        {k.label.replace(' (512x512)', '')}
+                      </button>
+                    ))}
+                  </div>
+                  <select
+                    style={{ width: '100%', marginBottom: 10 }}
+                    value={mapName}
+                    onChange={(e) => setMapName(e.target.value)}
+                    aria-label="Map">
+                    {maps.map((m) => (
+                      <option
+                        key={m.name}
+                        value={m.name}>
+                        {m.name} ({m.height}×{m.width})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="row">
+                    <button
+                      className={mode === 'window' ? 'on' : ''}
+                      onClick={() => setMode('window')}>
+                      40×40 window
+                    </button>
+                    <button
+                      className={mode === 'full' ? 'on' : ''}
+                      onClick={() => setMode('full')}>
+                      Full map
+                    </button>
+                  </div>
+                  <div className="lbl">
+                    <span>Start/goal pair</span>
+                    <span>{scen + 1} of 5</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="4"
+                    value={scen}
+                    onChange={(e) => setScen(+e.target.value)}
+                  />
+                  <button
+                    className="go"
+                    style={{ marginTop: 10 }}
+                    disabled={busy || !mapName}
+                    onClick={loadDataset}>
+                    Load map
+                  </button>
+                  <p className="note">
+                    Window crops (≈1,600 cells) suit Q-Learning. Full maps (up
+                    to 512×512) run A* and Dijkstra. Start and goal are far
+                    apart in the same connected region.
+                  </p>
+                </div>
+              )}
+              <div className="card">
+                <h3>Algorithm</h3>
+                <div className="row">
+                  {['A*', 'Dijkstra', 'Q-Learning'].map((a) => (
+                    <button
+                      key={a}
+                      className={alg === a ? 'on' : ''}
+                      onClick={() => setAlg(a)}>
+                      {a}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="go"
+                  disabled={busy}
+                  onClick={solve}>
+                  {busy ? 'Thinking…' : 'Run ' + alg}
+                </button>
+                <div
+                  className="row"
+                  style={{ marginTop: 10 }}>
+                  <button
+                    disabled={busy}
+                    onClick={compare}>
+                    Compare all three
+                  </button>
+                  <button
+                    disabled={busy}
+                    onClick={bench}>
+                    Run density benchmark
+                  </button>
+                </div>
+                {api && api.available ? (
+                  <div className="row">
+                    <button
+                      className={useApi ? 'on' : ''}
+                      onClick={() => setUseApi(true)}>
+                      Python engine
+                    </button>
+                    <button
+                      className={!useApi ? 'on' : ''}
+                      onClick={() => setUseApi(false)}>
+                      Browser engine
+                    </button>
+                  </div>
+                ) : (
+                  <p className="note">
+                    Browser engine in use. Start <code>python app.py</code> to
+                    enable the dataset and Python engine.
+                  </p>
+                )}
+                <div className="lbl">
+                  <span>Animation speed</span>
+                  <span>{speed}</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="60"
+                  value={speed}
+                  onChange={(e) => setSpeed(+e.target.value)}
+                />
+                {qBig && (
+                  <p className="note">
+                    Q-Learning is disabled for grids with more than {Q_MAX_FREE}{' '}
+                    free cells.
+                  </p>
+                )}
+              </div>
+              <div className="card">
+                <h3>Grid editor</h3>
+                <div className="row">
+                  <Tb id="wall">Draw wall</Tb>
+                  <Tb id="erase">Erase</Tb>
+                  <Tb id="start">Move start</Tb>
+                  <Tb id="goal">Move goal</Tb>
+                </div>
+                <div className="row">
+                  <button onClick={newMaze}>New small maze</button>
+                  <button onClick={clear}>Clear</button>
+                </div>
+                <div className="lbl">
+                  <span>Random obstacles</span>
+                  <span>{dens}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="45"
+                  value={dens}
+                  onChange={(e) => setDens(+e.target.value)}
+                />
+                <div
+                  className="row"
+                  style={{ marginTop: 8 }}>
+                  <button onClick={rnd}>Scatter obstacles</button>
+                  <label className="file">
+                    Import file
+                    <input
+                      type="file"
+                      accept=".map,.txt"
+                      hidden
+                      onChange={onFile}
+                    />
+                  </label>
+                </div>
+                <p className="note">
+                  Import a Moving AI .map file or a 0/1 text grid. Start and
+                  goal are placed on the first and last free cells; move them as
+                  you like.
+                </p>
+              </div>
+              <div className="card">
+                <h3>Export logs</h3>
+                <div className="row">
+                  <button
+                    disabled={!log.length}
+                    onClick={() =>
+                      dl(
+                        'pathfinding_log.json',
+                        JSON.stringify(log, null, 2),
+                        'application/json',
+                      )
+                    }>
+                    JSON
+                  </button>
+                  <button
+                    disabled={!log.length}
+                    onClick={csv}>
+                    CSV
+                  </button>
+                  <button onClick={png}>PNG snapshot</button>
+                  <button
+                    disabled={!log.length}
+                    onClick={() => setLog([])}>
+                    Clear log
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div className="card stage">
+                <div
+                  className="note"
+                  style={{ margin: '0 4px 8px' }}>
+                  {src} · {R}×{C} grid · {g.reduce((a, b) => a + b, 0)} walls
+                </div>
+                <div className="cvwrap">
+                  <canvas
+                    className="maze"
+                    ref={cv}
+                    onPointerDown={(e) => {
+                      drag.current = true;
+                      paint(e);
+                    }}
+                    onPointerMove={(e) => drag.current && paint(e)}
+                    onPointerUp={() => (drag.current = false)}
+                    onPointerLeave={() => (drag.current = false)}
+                  />
+                </div>
+                {err && <div className="warn">{err}</div>}
+                <div className="legend">
+                  <span>
+                    <i style={{ background: '#7be3c6' }} />
+                    Start
+                  </span>
+                  <span>
+                    <i style={{ background: '#ff7fa6' }} />
+                    Goal
+                  </span>
+                  <span>
+                    <i style={{ background: '#8F529B' }} />
+                    Wall
+                  </span>
+                  <span>
+                    <i style={{ background: 'hsl(250,80%,66%)' }} />
+                    Explored
+                  </span>
+                  <span>
+                    <i style={{ background: '#ffd27a' }} />
+                    Final path
+                  </span>
+                </div>
+                <div className="stats">
+                  <div className="stat">
+                    <b>
+                      {res && !res.skipped
+                        ? res.found
+                          ? res.path_len
+                          : 'None'
+                        : '–'}
+                    </b>
+                    <span>Steps in path</span>
+                  </div>
+                  <div className="stat">
+                    <b>
+                      {res && !res.skipped
+                        ? res.runtime_ms.toFixed(2) + ' ms'
+                        : '–'}
+                    </b>
+                    <span>Runtime</span>
+                  </div>
+                  <div className="stat">
+                    <b>{res && !res.skipped ? res.expanded_nodes : '–'}</b>
+                    <span>Nodes expanded</span>
+                  </div>
+                  <div className="stat">
+                    <b>
+                      {res && !res.skipped
+                        ? (res.expanded_density * 100).toFixed(1) + '%'
+                        : '–'}
+                    </b>
+                    <span>Expanded density</span>
+                  </div>
+                </div>
+                {res && res.learning_curve && (
+                  <div style={{ marginTop: 12 }}>
+                    <canvas
+                      ref={lc}
+                      style={{
+                        width: '100%',
+                        maxWidth: 520,
+                        height: 'auto',
+                        background: 'rgba(43,16,60,.55)',
+                        borderRadius: 12,
+                        border: '1px solid var(--line)',
+                      }}
+                    />
+                    <p className="note">
+                      Q-Learning: {res.episodes_run} episodes,{' '}
+                      {res.training_steps?.toLocaleString()} training steps.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div
+                className="card"
+                style={{ marginTop: 16 }}>
+                <h3>Run log ({log.length})</h3>
+                {log.length ? (
+                  <div className="scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Scenario</th>
+                          <th>Algorithm</th>
+                          <th>Steps</th>
+                          <th>Gap</th>
+                          <th>ms</th>
+                          <th>Expanded</th>
+                          <th>Density</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {log
+                          .slice()
+                          .reverse()
+                          .map((r) => (
+                            <tr key={r.id}>
+                              <td>{r.id}</td>
+                              <td>{r.scenario}</td>
+                              <td>{r.algorithm}</td>
+                              <td>{r.found ? r.steps : 'no path'}</td>
+                              <td>
+                                {r.optimality_gap === ''
+                                  ? '–'
+                                  : (r.optimality_gap * 100).toFixed(1) + '%'}
+                              </td>
+                              <td>{r.runtime_ms}</td>
+                              <td>{r.expanded_nodes}</td>
+                              <td>{(r.expanded_density * 100).toFixed(1)}%</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="note">
+                    Nothing yet. Press “Run” or “Compare all three” to record
+                    metrics here. “Gap” is how much longer the path is than the
+                    A* optimum.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      function Results({ api }) {
+        const [d, setD] = useState(null),
+          [err, setErr] = useState(false);
+        useEffect(() => {
+          fetch(API + '/api/results')
+            .then((r) => r.json())
+            .then(setD)
+            .catch(() => setErr(true));
+        }, []);
+        if (err)
+          return (
+            <div className="card">
+              <h3>Benchmark results</h3>
+              <p className="note">
+                Start the backend with <code>python app.py</code> to browse
+                benchmark results (run <code>python benchmark.py</code> first to
+                create them).
+              </p>
+            </div>
+          );
+        if (!d) return <div className="card">Loading…</div>;
+        const cap = {
+          paths_maze_window: 'Maze 40×40 window: all three algorithms',
+          paths_random_window:
+            'Random-obstacle 40×40 window: all three algorithms',
+          paths_dao_window: 'Dragon Age: Origins window',
+          paths_da2_window: 'Dragon Age 2 window',
+          paths_maze_full: 'Full 512×512 maze: A* vs Dijkstra',
+          paths_random_full: 'Full 512×512 random map: A* vs Dijkstra',
+          paths_dao_full: 'Full Dragon Age: Origins map',
+          paths_da2_full: 'Full Dragon Age 2 map',
+          qlearning_learning_curve: 'Q-Learning learning curves',
+          runtime_vs_free_cells: 'Runtime vs map size',
+          expanded_density_by_category: 'Expanded density by map category',
+          obstacle_density_sweep: 'Effect of obstacle density (random maps)',
+          maze_corridor_width: 'Effect of corridor width (maze maps)',
+          qlearning_maze: 'Q-Learning path optimisation (animation)',
+          qlearning_random: 'Q-Learning path optimisation (animation)',
+        };
+        const CL = {
+          maze: 'Maze 512',
+          random: 'Random 512',
+          dao: 'Dragon Age: Origins',
+          da2: 'Dragon Age 2',
+        };
+        const Tbl = ({ rows }) =>
+          rows.length ? (
+            <div
+              className="scroll"
+              style={{ maxHeight: 'none' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Algorithm</th>
+                    <th>Runs</th>
+                    <th>Solved</th>
+                    <th>Mean steps</th>
+                    <th>Mean ms</th>
+                    <th>Mean expanded</th>
+                    <th>Expanded density</th>
+                    <th>Gap vs optimal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={i}>
+                      <td>{CL[r.category] || r.category}</td>
+                      <td>{r.algorithm}</td>
+                      <td>{r.runs}</td>
+                      <td>{r.solved}</td>
+                      <td>{(+r.mean_steps).toFixed(1)}</td>
+                      <td>{(+r.mean_runtime_ms).toFixed(2)}</td>
+                      <td>{(+r.mean_expanded).toFixed(0)}</td>
+                      <td>{(r.mean_expanded_density * 100).toFixed(1)}%</td>
+                      <td>{(r.mean_gap * 100).toFixed(2)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="note">
+              No summary found. Run <code>python benchmark.py</code>.
+            </p>
+          );
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="card">
+              <h3>40×40 windows – all three algorithms on the same cells</h3>
+              <Tbl rows={d.windows || []} />
+            </div>
+            <div className="card">
+              <h3>Full maps – A* vs Dijkstra</h3>
+              <Tbl rows={d.full || []} />
+              <div
+                className="row"
+                style={{ marginTop: 12 }}>
+                {(d.files || []).map((f) => (
+                  <a
+                    key={f}
+                    className="dlbtn"
+                    href={`${API}/results/${f}`}
+                    download>
+                    {f}
+                  </a>
+                ))}
+              </div>
+            </div>
+            <div className="figs">
+              {(d.figures || []).map((f) => {
+                const k = f.replace(/\.(png|gif)$/, '');
+                return (
+                  <figure key={f}>
+                    <img
+                      src={`${API}/results/figures/${f}`}
+                      alt={cap[k] || k}
+                      loading="lazy"
+                    />
+                    <figcaption>
+                      {cap[k] || k} ·{' '}
+                      <a
+                        style={{ color: 'var(--teal)' }}
+                        href={`${API}/results/figures/${f}`}
+                        download>
+                        download
+                      </a>
+                    </figcaption>
+                  </figure>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
+      function App() {
+        const [tab, setTab] = useState('play'),
+          [api, setApi] = useState(null);
+        useEffect(() => {
+          fetch(API + '/api/dataset')
+            .then((r) => r.json())
+            .then(setApi)
+            .catch(() => setApi({ available: false, offline: true }));
+        }, []);
+        return (
+          <div className="wrap">
+            <h1>Pathfinder</h1>
+            <p className="sub">
+              Watch A*, Dijkstra and a Q-Learning agent navigate real benchmark
+              maps from the Moving AI Lab collection (mazes, random obstacles,
+              Dragon Age game maps). Paint walls, move the start and goal, and
+              compare steps, runtime and expanded-node density.
+            </p>
+            <div className="tabs">
+              <button
+                className={tab === 'play' ? 'on' : ''}
+                onClick={() => setTab('play')}>
+                Playground
+              </button>
+              <button
+                className={tab === 'res' ? 'on' : ''}
+                onClick={() => setTab('res')}>
+                Benchmark results
+              </button>
+            </div>
+            {tab === 'play' ? <Playground api={api} /> : <Results api={api} />}
+          </div>
+        );
+      }
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+  </body>
+</html>
