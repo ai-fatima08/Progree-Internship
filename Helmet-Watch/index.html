@@ -1,0 +1,1396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1" />
+    <title>HelmetWatch Real-time Rider Safety Detection</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+    <style>
+      :root {
+        --bg: #09051a;
+        --tx: #f5f3ff;
+        --mute: #a79bc9;
+        --line: rgba(167, 139, 250, 0.2);
+        --glass: rgba(255, 255, 255, 0.045);
+        --v1: #6d28d9;
+        --v2: #8b5cf6;
+        --v3: #a78bfa;
+        --f: #e879f9;
+        --grn: #34d399;
+        --red: #fb7185;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--tx);
+        font-family: 'Inter', sans-serif;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+      }
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -2;
+        background:
+          radial-gradient(
+            900px 600px at 82% -8%,
+            rgba(139, 92, 246, 0.45),
+            transparent 65%
+          ),
+          radial-gradient(
+            700px 500px at -5% 35%,
+            rgba(109, 40, 217, 0.32),
+            transparent 65%
+          ),
+          radial-gradient(
+            800px 600px at 70% 105%,
+            rgba(232, 121, 249, 0.22),
+            transparent 65%
+          ),
+          var(--bg);
+      }
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        opacity: 0.5;
+        background-image:
+          linear-gradient(rgba(167, 139, 250, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(167, 139, 250, 0.07) 1px, transparent 1px);
+        background-size: 48px 48px;
+        -webkit-mask-image: radial-gradient(
+          ellipse at 50% 0,
+          #000 20%,
+          transparent 75%
+        );
+        mask-image: radial-gradient(
+          ellipse at 50% 0,
+          #000 20%,
+          transparent 75%
+        );
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: 'Sora', sans-serif;
+        margin: 0;
+      }
+      .shell {
+        max-width: 1280px;
+        margin: auto;
+        padding: 18px 24px 56px;
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        padding: 10px 14px;
+        background: var(--glass);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .mark {
+        width: 42px;
+        height: 42px;
+        border-radius: 13px;
+        background: linear-gradient(135deg, var(--v2), var(--f));
+        display: grid;
+        place-items: center;
+        font-size: 21px;
+        box-shadow: 0 10px 26px -8px rgba(217, 70, 239, 0.8);
+      }
+      .brand b {
+        font-family: 'Sora';
+        font-size: 19px;
+        display: block;
+        line-height: 1.1;
+      }
+      .brand small {
+        color: var(--mute);
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .top-r {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .chipm {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--v3);
+        padding: 7px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(139, 92, 246, 0.12);
+      }
+      .pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 13px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        font-size: 12.5px;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--mute);
+      }
+      .dot.on {
+        background: var(--grn);
+        box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.2);
+      }
+      .dot.off {
+        background: var(--red);
+        box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.2);
+      }
+      .hero {
+        padding: 40px 0 26px;
+        max-width: 760px;
+      }
+      .eyebrow {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--v3);
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(139, 92, 246, 0.14);
+        border: 1px solid var(--line);
+        margin-bottom: 16px;
+      }
+      .hero h1 {
+        font-size: clamp(32px, 5.2vw, 58px);
+        font-weight: 800;
+        line-height: 1.08;
+        letter-spacing: -1.5px;
+      }
+      .grad {
+        background: linear-gradient(100deg, #c4b5fd, #a78bfa 35%, #e879f9);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .hero p {
+        font-size: 16.5px;
+        line-height: 1.7;
+        color: var(--mute);
+        margin: 16px 0 0;
+        max-width: 620px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 22px;
+        align-items: start;
+      }
+      @media (max-width: 980px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      .panel {
+        background: var(--glass);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 16px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 30px 60px -34px rgba(0, 0, 0, 0.8);
+      }
+      .panel h3 {
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .panel h3::before {
+        content: '';
+        width: 4px;
+        height: 16px;
+        border-radius: 4px;
+        background: linear-gradient(var(--v3), var(--f));
+      }
+      .bar-h {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 2px 4px 12px;
+      }
+      .dots {
+        display: flex;
+        gap: 6px;
+      }
+      .dots i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(167, 139, 250, 0.35);
+      }
+      .ttl {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--mute);
+        flex: 1;
+      }
+      .live {
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: var(--mute);
+      }
+      .live.on {
+        color: var(--red);
+      }
+      .stage {
+        position: relative;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #07031a;
+        aspect-ratio: 16/10;
+        box-shadow:
+          0 0 0 1px var(--line),
+          0 0 60px -12px rgba(139, 92, 246, 0.55);
+      }
+      .stage canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .stage.drag {
+        box-shadow:
+          0 0 0 3px var(--f),
+          0 0 70px -6px rgba(232, 121, 249, 0.8);
+      }
+      .cn {
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        border: 2px solid var(--v3);
+        opacity: 0.9;
+        pointer-events: none;
+      }
+      .cn.tl {
+        top: 10px;
+        left: 10px;
+        border-right: 0;
+        border-bottom: 0;
+        border-radius: 6px 0 0 0;
+      }
+      .cn.tr {
+        top: 10px;
+        right: 10px;
+        border-left: 0;
+        border-bottom: 0;
+        border-radius: 0 6px 0 0;
+      }
+      .cn.bl {
+        bottom: 10px;
+        left: 10px;
+        border-right: 0;
+        border-top: 0;
+        border-radius: 0 0 0 6px;
+      }
+      .cn.br {
+        bottom: 10px;
+        right: 10px;
+        border-left: 0;
+        border-top: 0;
+        border-radius: 0 0 6px 0;
+      }
+      .tag {
+        position: absolute;
+        top: 18px;
+        right: 42px;
+        display: flex;
+        gap: 8px;
+      }
+      .tag span {
+        background: rgba(9, 5, 26, 0.78);
+        border: 1px solid var(--line);
+        color: #e9d5ff;
+        padding: 5px 11px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        backdrop-filter: blur(8px);
+      }
+      .alert {
+        position: absolute;
+        left: 44px;
+        right: 44px;
+        bottom: 18px;
+        padding: 11px 16px;
+        border-radius: 14px;
+        font-weight: 700;
+        font-size: 14.5px;
+        backdrop-filter: blur(10px);
+        text-align: center;
+      }
+      .alert.bad {
+        background: rgba(190, 18, 60, 0.85);
+        border: 1px solid #fb7185;
+        animation: pulse 1s infinite;
+      }
+      .alert.info {
+        background: rgba(76, 29, 149, 0.88);
+        border: 1px solid #a78bfa;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .alert.ok {
+        background: rgba(5, 150, 105, 0.8);
+        border: 1px solid #34d399;
+      }
+      @keyframes pulse {
+        50% {
+          box-shadow: 0 0 0 7px rgba(251, 113, 133, 0.28);
+        }
+      }
+      .cta {
+        position: absolute;
+        left: 50%;
+        bottom: 22px;
+        transform: translateX(-50%);
+        background: rgba(9, 5, 26, 0.82);
+        border: 1px solid var(--line);
+        padding: 10px 18px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 13.5px;
+        white-space: nowrap;
+        backdrop-filter: blur(10px);
+      }
+      .dock {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding-top: 14px;
+      }
+      .btn {
+        font: inherit;
+        font-weight: 600;
+        font-size: 13.5px;
+        color: var(--tx);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--line);
+        padding: 10px 16px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition:
+          transform 0.15s,
+          background 0.15s,
+          box-shadow 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+        background: rgba(139, 92, 246, 0.22);
+      }
+      .btn:focus-visible,
+      input:focus-visible,
+      .tabs button:focus-visible {
+        outline: 2px solid var(--f);
+        outline-offset: 3px;
+      }
+      .btn.go {
+        background: linear-gradient(100deg, var(--v1), var(--v2) 50%, var(--f));
+        border: 0;
+        box-shadow: 0 14px 30px -10px rgba(168, 85, 247, 0.9);
+      }
+      .btn.stop {
+        background: linear-gradient(100deg, #be123c, #fb7185);
+        border: 0;
+      }
+      .btn input {
+        display: none;
+      }
+      .side {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 4px;
+        border-radius: 13px;
+        margin-bottom: 14px;
+      }
+      .tabs button {
+        font: inherit;
+        font-weight: 600;
+        font-size: 13px;
+        border: 0;
+        background: transparent;
+        color: var(--mute);
+        padding: 9px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .tabs button.act {
+        background: linear-gradient(100deg, var(--v1), var(--v2));
+        color: #fff;
+        box-shadow: 0 6px 16px -6px rgba(139, 92, 246, 0.9);
+      }
+      .field {
+        margin-bottom: 14px;
+      }
+      .field label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--mute);
+        margin-bottom: 7px;
+      }
+      .field label b {
+        color: #e9d5ff;
+        background: rgba(139, 92, 246, 0.2);
+        padding: 1px 9px;
+        border-radius: 7px;
+      }
+      input[type='range'] {
+        width: 100%;
+        accent-color: var(--v2);
+      }
+      .sw {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        font-size: 13.5px;
+        cursor: pointer;
+      }
+      .sw input {
+        width: 17px;
+        height: 17px;
+        accent-color: var(--v2);
+      }
+      .hint {
+        font-size: 12.5px;
+        color: var(--mute);
+        line-height: 1.55;
+        margin: 0 0 12px;
+      }
+      .chips {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        min-height: 40px;
+      }
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        border: 1px solid var(--line);
+      }
+      .chip b {
+        font-family: 'Sora';
+        font-size: 20px;
+        margin-left: auto;
+      }
+      .sq {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+      }
+      .empty {
+        grid-column: 1/-1;
+        color: var(--mute);
+        font-size: 13px;
+      }
+      .ringrow {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 6px;
+      }
+      .ring {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        flex: none;
+      }
+      .ring svg {
+        width: 100%;
+        height: 100%;
+      }
+      .rt {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.09);
+        stroke-width: 10;
+      }
+      .rv {
+        fill: none;
+        stroke: url(#rg);
+        stroke-width: 10;
+        stroke-linecap: round;
+        transition: stroke-dasharray 0.4s;
+      }
+      .rn {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-family: 'Sora';
+        font-weight: 800;
+        font-size: 20px;
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .kpi {
+        padding: 11px 13px;
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.26);
+        border: 1px solid var(--line);
+      }
+      .kpi small {
+        display: block;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--mute);
+        margin-bottom: 2px;
+      }
+      .kpi div {
+        font-family: 'Sora';
+        font-size: 25px;
+        font-weight: 700;
+        background: linear-gradient(100deg, #e9d5ff, #c4b5fd);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .kpi u {
+        font-size: 12px;
+        text-decoration: none;
+        color: var(--mute);
+        -webkit-text-fill-color: var(--mute);
+        margin-left: 3px;
+        font-family: 'Inter';
+      }
+      svg.area {
+        width: 100%;
+        height: 84px;
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.26);
+        border: 1px solid var(--line);
+        display: block;
+      }
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%);
+        background: #1e0b45;
+        color: #f5d0fe;
+        border: 1px solid var(--f);
+        padding: 12px 20px;
+        border-radius: 14px;
+        font-weight: 600;
+        font-size: 14px;
+        z-index: 9;
+        max-width: 90vw;
+        box-shadow: 0 18px 40px -10px rgba(0, 0, 0, 0.7);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useState, useRef, useEffect, useCallback } = React;
+      const API = location.protocol === 'file:' ? 'http://127.0.0.1:5000' : '';
+      const FIXED = {
+        helmet: '#22c55e',
+        no_helmet: '#ef4444',
+        rider: '#3b82f6',
+        bike: '#f59e0b',
+        lisc: '#a855f7',
+      };
+      const PAL = [
+        '#0ea5e9',
+        '#f97316',
+        '#eab308',
+        '#14b8a6',
+        '#ec4899',
+        '#84cc16',
+      ];
+      const colorOf = (l) =>
+        FIXED[l] ||
+        PAL[[...l].reduce((a, c) => a + c.charCodeAt(0), 0) % PAL.length];
+
+      function App() {
+        const [tab, setTab] = useState('yolo');
+        const [src, setSrc] = useState(null);
+        const [running, setRunning] = useState(false);
+        const [online, setOnline] = useState(null);
+        const [p, setP] = useState({
+          conf: 0.4,
+          blur: 5,
+          block: 21,
+          minArea: 400,
+        });
+        const [showMask, setShowMask] = useState(false);
+        const [counts, setCounts] = useState({});
+        const [viol, setViol] = useState(0);
+        const [hasHelmet, setHasHelmet] = useState(false);
+        const [comp, setComp] = useState({ h: 0, n: 0 });
+        const [stats, setStats] = useState({
+          fps: 0,
+          lat: 0,
+          frames: 0,
+          objs: 0,
+        });
+        const [lats, setLats] = useState([]);
+        const [err, setErr] = useState('');
+        const [drag, setDrag] = useState(false);
+        const vid = useRef(),
+          cv = useRef(),
+          off = useRef(document.createElement('canvas'));
+        const run = useRef(false),
+          log = useRef([]),
+          pr = useRef(p),
+          mr = useRef({}),
+          cmp = useRef({ h: 0, n: 0 });
+        pr.current = p;
+        mr.current = { mode: tab, showMask };
+        const toast = (m) => {
+          setErr(m);
+          setTimeout(() => setErr(''), 4500);
+        };
+        useEffect(() => {
+          fetch(API + '/api/health')
+            .then((r) => r.json())
+            .then((h) => {
+              setOnline(true);
+              setHasHelmet((h.classes || []).includes('no_helmet'));
+            })
+            .catch(() => setOnline(false));
+        }, []);
+
+        useEffect(() => {
+          // animated idle road scene
+          if (running || src) return;
+          const c = cv.current;
+          c.width = 640;
+          c.height = 400;
+          const x = c.getContext('2d');
+          let id,
+            t = 0;
+          const items = [
+            ['rider', 0, '#3b82f6', 90, 120, 90, 150],
+            ['helmet', 0, '#22c55e', 110, 120, 46, 44],
+            ['bike', 0, '#f59e0b', 70, 190, 130, 90],
+            ['rider', 2, '#3b82f6', 360, 150, 80, 130],
+            ['no_helmet', 2, '#ef4444', 378, 150, 44, 40],
+            ['bike', 2, '#f59e0b', 340, 215, 120, 80],
+          ];
+          const draw = () => {
+            t += 0.02;
+            x.fillStyle = '#1a0b3a';
+            x.fillRect(0, 0, 640, 400);
+            x.fillStyle = '#2b1458';
+            x.fillRect(0, 150, 640, 200);
+            x.strokeStyle = '#e9d5ff';
+            x.lineWidth = 4;
+            x.setLineDash([30, 24]);
+            x.lineDashOffset = -t * 200;
+            x.beginPath();
+            x.moveTo(0, 250);
+            x.lineTo(640, 250);
+            x.stroke();
+            x.setLineDash([]);
+            items.forEach(([l, ph, col, bx, by, w, h], i) => {
+              const X = bx + Math.sin(t + ph) * 14,
+                Y = by + Math.cos(t * 1.3 + ph) * 5;
+              x.strokeStyle = col;
+              x.lineWidth = 3;
+              x.strokeRect(X, Y, w, h);
+              const tx =
+                l + ' ' + (90 + Math.round(Math.sin(t * 2 + i) * 5)) + '%';
+              x.font = '800 12px Inter';
+              const tw = x.measureText(tx).width + 12;
+              x.fillStyle = col;
+              x.fillRect(X, Y - 20, tw, 20);
+              x.fillStyle = '#fff';
+              x.fillText(tx, X + 6, Y - 6);
+            });
+            id = requestAnimationFrame(draw);
+          };
+          draw();
+          return () => cancelAnimationFrame(id);
+        }, [running, src]);
+
+        const preview = () => {
+          const v = vid.current,
+            c = cv.current;
+          if (!v.videoWidth) return;
+          c.width = 640;
+          c.height = Math.round((640 * v.videoHeight) / v.videoWidth);
+          c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        };
+        const stop = () => {
+          run.current = false;
+          setRunning(false);
+        };
+        const loadFile = (f) => {
+          if (!f || !f.type.startsWith('video/')) {
+            toast('Please choose a video file (mp4, webm, mov).');
+            return;
+          }
+          stop();
+          setSrc('file');
+          const v = vid.current;
+          v.srcObject = null;
+          v.src = URL.createObjectURL(f);
+          v.loop = true;
+          v.onloadeddata = preview;
+        };
+        const cam = async () => {
+          try {
+            stop();
+            const s = await navigator.mediaDevices.getUserMedia({
+              video: true,
+            });
+            const v = vid.current;
+            v.src = '';
+            v.srcObject = s;
+            setSrc('cam');
+            await v.play();
+            setTimeout(preview, 300);
+          } catch (x) {
+            toast(
+              'Webcam blocked or not found. Allow camera access or upload a video.',
+            );
+          }
+        };
+
+        const loop = useCallback(async () => {
+          const v = vid.current,
+            c = cv.current,
+            o = off.current;
+          const W = 640,
+            H = Math.round((W * v.videoHeight) / v.videoWidth) || 360;
+          o.width = c.width = W;
+          o.height = c.height = H;
+          const ctx = c.getContext('2d');
+          let t0 = performance.now(),
+            n = 0;
+          while (run.current) {
+            o.getContext('2d').drawImage(v, 0, 0, W, H);
+            const blob = await new Promise((r) =>
+              o.toBlob(r, 'image/jpeg', 0.8),
+            );
+            const fd = new FormData();
+            fd.append('frame', blob);
+            const q = pr.current,
+              m = mr.current;
+            fd.append('mode', m.mode);
+            fd.append('conf', q.conf);
+            fd.append('blur', q.blur);
+            fd.append('block', q.block);
+            fd.append('min_area', q.minArea);
+            fd.append('mask', m.showMask ? 1 : 0);
+            const ts = performance.now();
+            let d;
+            try {
+              const r = await fetch(API + '/api/detect', {
+                method: 'POST',
+                body: fd,
+              });
+              d = await r.json();
+              if (d.error) throw new Error(d.error);
+            } catch (x) {
+              toast('Backend problem: ' + x.message);
+              run.current = false;
+              setRunning(false);
+              break;
+            }
+            const rt = performance.now() - ts;
+            if (d.mask) {
+              const im = new Image();
+              await new Promise((r) => {
+                im.onload = r;
+                im.src = 'data:image/jpeg;base64,' + d.mask;
+              });
+              ctx.drawImage(im, 0, 0, W, H);
+            } else ctx.drawImage(v, 0, 0, W, H);
+            d.detections.forEach((b) => {
+              const [x, y, w, h] = b.box,
+                col = colorOf(b.label);
+              ctx.strokeStyle = col;
+              ctx.lineWidth = b.label === 'no_helmet' ? 4 : 2.5;
+              ctx.strokeRect(x, y, w, h);
+              const t =
+                b.label + (b.conf ? ' ' + ((b.conf * 100) | 0) + '%' : '');
+              ctx.font = '800 13px Inter';
+              const tw = ctx.measureText(t).width + 12;
+              ctx.fillStyle = col;
+              ctx.fillRect(x, Math.max(0, y - 22), tw, 22);
+              ctx.fillStyle = '#fff';
+              ctx.fillText(t, x + 6, Math.max(15, y - 7));
+            });
+            const keys = Object.keys(d.counts);
+            ctx.fillStyle = 'rgba(26,8,56,.86)';
+            ctx.fillRect(10, 10, 200, 36 + keys.length * 22);
+            ctx.fillStyle = '#e9d5ff';
+            ctx.font = '800 15px Sora';
+            ctx.fillText('Total objects: ' + d.detections.length, 20, 33);
+            ctx.font = '700 13px Inter';
+            keys.forEach((k, i) => {
+              ctx.fillStyle = colorOf(k);
+              ctx.fillText(k + ':  ' + d.counts[k], 20, 56 + i * 22);
+            });
+            n++;
+            const now = performance.now(),
+              fps = n / ((now - t0) / 1000);
+            if (now - t0 > 3000) {
+              t0 = now;
+              n = 0;
+            }
+            cmp.current = {
+              h: cmp.current.h + (d.counts.helmet || 0),
+              n: cmp.current.n + (d.counts.no_helmet || 0),
+            };
+            setComp(cmp.current);
+            setViol(d.violations || 0);
+            setCounts(d.counts);
+            setStats((s) => ({
+              fps: fps.toFixed(1),
+              lat: d.latency_ms.toFixed(0),
+              frames: s.frames + 1,
+              objs: d.detections.length,
+            }));
+            setLats((a) => [...a.slice(-59), rt]);
+            log.current.push([
+              log.current.length + 1,
+              m.mode,
+              d.detections.length,
+              d.violations || 0,
+              d.latency_ms.toFixed(1),
+              rt.toFixed(1),
+              fps.toFixed(2),
+              JSON.stringify(d.counts).replace(/,/g, ';'),
+            ]);
+          }
+        }, []);
+
+        const start = async () => {
+          if (!src) {
+            toast('Add a video or start the webcam first.');
+            return;
+          }
+          try {
+            await vid.current.play();
+          } catch (e) {}
+          log.current = [];
+          cmp.current = { h: 0, n: 0 };
+          setComp({ h: 0, n: 0 });
+          setStats((s) => ({ ...s, frames: 0 }));
+          run.current = true;
+          setRunning(true);
+          loop();
+        };
+        const save = (href, name) => {
+          const a = document.createElement('a');
+          a.href = href;
+          a.download = name;
+          a.click();
+        };
+        const exportCsv = () => {
+          if (!log.current.length) {
+            toast('Run the detector first, then export the log.');
+            return;
+          }
+          const rows = [
+            [
+              'frame',
+              'mode',
+              'objects',
+              'no_helmet',
+              'server_ms',
+              'roundtrip_ms',
+              'fps',
+              'counts',
+            ],
+            ...log.current,
+          ]
+            .map((r) => r.join(','))
+            .join('\n');
+          save(
+            URL.createObjectURL(new Blob([rows], { type: 'text/csv' })),
+            'frame_metrics.csv',
+          );
+        };
+        const set = (k) => (e) => setP({ ...p, [k]: +e.target.value });
+        const mx = Math.max(1, ...lats);
+        const pts = lats.map(
+          (l, i) => `${(i / 59) * 300},${78 - (l / mx) * 66}`,
+        );
+        const area = pts.length
+          ? `0,84 ${pts.join(' ')} ${((lats.length - 1) / 59) * 300},84`
+          : '';
+        const tot = comp.h + comp.n,
+          pct = tot ? Math.round((comp.h / tot) * 100) : 0;
+
+        return (
+          <div className="shell">
+            <header className="top">
+              <div className="brand">
+                <span className="mark">⛑</span>
+                <div>
+                  <b>HelmetWatch</b>
+                  <small>AI traffic safety studio</small>
+                </div>
+              </div>
+              <div className="top-r">
+                <span className="chipm">YOLOv8 + OpenCV</span>
+                <div className="pill">
+                  <i
+                    className={
+                      'dot ' + (online ? 'on' : online === false ? 'off' : '')
+                    }></i>
+                  {online
+                    ? hasHelmet
+                      ? 'Helmet model active'
+                      : 'Backend connected · generic model'
+                    : online === false
+                      ? 'Backend offline – run python server.py'
+                      : 'Checking backend…'}
+                </div>
+              </div>
+            </header>
+            <section className="hero">
+              <span className="eyebrow">Computer Vision · Real-time</span>
+              <h1>
+                Spot riders <span className="grad">without helmets</span> in
+                real time.
+              </h1>
+              <p>
+                Drop in a traffic video. YOLO finds riders with helmets and
+                without helmets, counts every class, and raises an alert the
+                moment a rider has no helmet.
+              </p>
+            </section>
+            <main className="layout">
+              <section className="panel">
+                <div className="bar-h">
+                  <div className="dots">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                  </div>
+                  <span className="ttl">
+                    {running ? 'Live inference' : 'Detection preview'}
+                  </span>
+                  <span className={'live' + (running ? ' on' : '')}>
+                    {running ? '● LIVE' : '○ IDLE'}
+                  </span>
+                </div>
+                <div
+                  className={'stage' + (drag ? ' drag' : '')}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDrag(true);
+                  }}
+                  onDragLeave={() => setDrag(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDrag(false);
+                    loadFile(e.dataTransfer.files[0]);
+                  }}>
+                  <video
+                    ref={vid}
+                    muted
+                    playsInline
+                    style={{ display: 'none' }}
+                  />
+                  <canvas
+                    ref={cv}
+                    width="640"
+                    height="400"
+                  />
+                  <i className="cn tl"></i>
+                  <i className="cn tr"></i>
+                  <i className="cn bl"></i>
+                  <i className="cn br"></i>
+                  {running && (
+                    <div className="tag">
+                      <span>{stats.fps} FPS</span>
+                      <span>{stats.lat} ms</span>
+                    </div>
+                  )}
+                  {running && tab === 'yolo' && !hasHelmet && (
+                    <div className="alert info">
+                      ℹ Generic COCO model loaded. Helmet alerts turn on after
+                      you train and add best.pt
+                    </div>
+                  )}
+                  {running &&
+                    tab === 'yolo' &&
+                    hasHelmet &&
+                    (viol > 0 ? (
+                      <div
+                        className="alert bad"
+                        role="alert">
+                        ⚠ {viol} rider{viol > 1 ? 's' : ''} without helmet in
+                        this frame
+                      </div>
+                    ) : (
+                      <div className="alert ok">
+                        ✔ No violations in this frame
+                      </div>
+                    ))}
+                  {!running && !src && (
+                    <div className="cta">
+                      Drop a video here, or use the buttons below
+                    </div>
+                  )}
+                </div>
+                <div className="dock">
+                  <label className="btn">
+                    ⬆ Upload video
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => loadFile(e.target.files[0])}
+                    />
+                  </label>
+                  <button
+                    className="btn"
+                    onClick={cam}>
+                    ● Webcam
+                  </button>
+                  {!running ? (
+                    <button
+                      className="btn go"
+                      onClick={start}>
+                      ▶ Start detection
+                    </button>
+                  ) : (
+                    <button
+                      className="btn stop"
+                      onClick={stop}>
+                      ■ Stop
+                    </button>
+                  )}
+                  <button
+                    className="btn"
+                    onClick={() =>
+                      save(cv.current.toDataURL('image/png'), 'snapshot.png')
+                    }>
+                    📷 Snapshot
+                  </button>
+                  <button
+                    className="btn"
+                    onClick={exportCsv}>
+                    ⇩ Frame log
+                  </button>
+                </div>
+              </section>
+              <aside className="side">
+                <div className="panel">
+                  <div className="tabs">
+                    <button
+                      className={tab === 'yolo' ? 'act' : ''}
+                      onClick={() => setTab('yolo')}>
+                      YOLO objects
+                    </button>
+                    <button
+                      className={tab === 'contour' ? 'act' : ''}
+                      onClick={() => setTab('contour')}>
+                      Shape contours
+                    </button>
+                  </div>
+                  {tab === 'yolo' ? (
+                    <>
+                      <p className="hint">
+                        Deep-learning detector. Lower confidence finds more
+                        objects, higher is stricter.
+                      </p>
+                      <div className="field">
+                        <label>
+                          Confidence <b>{p.conf}</b>
+                        </label>
+                        <input
+                          type="range"
+                          min="0.1"
+                          max="0.9"
+                          step="0.05"
+                          value={p.conf}
+                          onChange={set('conf')}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="hint">
+                        Classic OpenCV: grayscale, Gaussian blur, adaptive
+                        threshold, contour shape matching.
+                      </p>
+                      <div className="field">
+                        <label>
+                          Gaussian kernel <b>{p.blur}</b>
+                        </label>
+                        <input
+                          type="range"
+                          min="1"
+                          max="15"
+                          step="2"
+                          value={p.blur}
+                          onChange={set('blur')}
+                        />
+                      </div>
+                      <div className="field">
+                        <label>
+                          Adaptive block size <b>{p.block}</b>
+                        </label>
+                        <input
+                          type="range"
+                          min="3"
+                          max="51"
+                          step="2"
+                          value={p.block}
+                          onChange={set('block')}
+                        />
+                      </div>
+                      <div className="field">
+                        <label>
+                          Minimum area <b>{p.minArea}px</b>
+                        </label>
+                        <input
+                          type="range"
+                          min="50"
+                          max="5000"
+                          step="50"
+                          value={p.minArea}
+                          onChange={set('minArea')}
+                        />
+                      </div>
+                      <label className="sw">
+                        <input
+                          type="checkbox"
+                          checked={showMask}
+                          onChange={(e) => setShowMask(e.target.checked)}
+                        />
+                        Show threshold mask
+                      </label>
+                    </>
+                  )}
+                </div>
+                <div className="panel">
+                  <h3>Live counts</h3>
+                  <div className="chips">
+                    {Object.keys(counts).length ? (
+                      Object.entries(counts).map(([k, v]) => (
+                        <div
+                          className="chip"
+                          key={k}
+                          style={{
+                            background: colorOf(k) + '1f',
+                            borderColor: colorOf(k) + '55',
+                          }}>
+                          <i
+                            className="sq"
+                            style={{ background: colorOf(k) }}></i>
+                          {k}
+                          <b>{v}</b>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="empty">
+                        Counts per class show up once detection starts.
+                      </span>
+                    )}
+                  </div>
+                  {tab === 'yolo' && hasHelmet && (
+                    <>
+                      <h3 style={{ marginTop: 20 }}>Helmet compliance</h3>
+                      <div className="ringrow">
+                        <div className="ring">
+                          <svg viewBox="0 0 100 100">
+                            <defs>
+                              <linearGradient
+                                id="rg"
+                                x1="0"
+                                y1="0"
+                                x2="1"
+                                y2="1">
+                                <stop
+                                  offset="0"
+                                  stopColor="#a78bfa"
+                                />
+                                <stop
+                                  offset="1"
+                                  stopColor="#f0abfc"
+                                />
+                              </linearGradient>
+                            </defs>
+                            <circle
+                              className="rt"
+                              cx="50"
+                              cy="50"
+                              r="42"
+                            />
+                            <circle
+                              className="rv"
+                              cx="50"
+                              cy="50"
+                              r="42"
+                              strokeDasharray={(tot ? pct * 2.639 : 0) + ' 264'}
+                              transform="rotate(-90 50 50)"
+                            />
+                          </svg>
+                          <div className="rn">{tot ? pct + '%' : '–'}</div>
+                        </div>
+                        <p
+                          className="hint"
+                          style={{ margin: 0 }}>
+                          {tot
+                            ? pct +
+                              '% of detected heads (all frames so far) wore a helmet'
+                            : 'Starts after the first detections.'}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="panel">
+                  <h3>Performance</h3>
+                  <div className="kpis">
+                    <div className="kpi">
+                      <small>Speed</small>
+                      <div>
+                        {stats.fps}
+                        <u>fps</u>
+                      </div>
+                    </div>
+                    <div className="kpi">
+                      <small>Inference</small>
+                      <div>
+                        {stats.lat}
+                        <u>ms</u>
+                      </div>
+                    </div>
+                    <div className="kpi">
+                      <small>Frames processed</small>
+                      <div>{stats.frames}</div>
+                    </div>
+                    <div className="kpi">
+                      <small>Objects in frame</small>
+                      <div>{stats.objs}</div>
+                    </div>
+                  </div>
+                  <svg
+                    className="area"
+                    viewBox="0 0 300 84"
+                    preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient
+                        id="sg"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1">
+                        <stop
+                          offset="0"
+                          stopColor="#a78bfa"
+                          stopOpacity=".55"
+                        />
+                        <stop
+                          offset="1"
+                          stopColor="#a78bfa"
+                          stopOpacity="0"
+                        />
+                      </linearGradient>
+                    </defs>
+                    {area && (
+                      <polygon
+                        points={area}
+                        fill="url(#sg)"
+                      />
+                    )}
+                    {pts.length > 1 && (
+                      <polyline
+                        points={pts.join(' ')}
+                        fill="none"
+                        stroke="#c4b5fd"
+                        strokeWidth="2.5"
+                      />
+                    )}
+                  </svg>
+                  <p
+                    className="hint"
+                    style={{ margin: '8px 0 0' }}>
+                    Round-trip time per frame, last 60 frames.
+                  </p>
+                </div>
+              </aside>
+            </main>
+            {err && (
+              <div
+                className="toast"
+                role="alert">
+                {err}
+              </div>
+            )}
+          </div>
+        );
+      }
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+  </body>
+</html>
