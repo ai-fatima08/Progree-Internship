@@ -1,0 +1,2349 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1" />
+    <title>Moodora Sentiment Classifier</title>
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com" />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet" />
+    <style>
+      @property --mood {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #934372;
+      }
+      :root {
+        --mood: #934372;
+        --neg: #812d35;
+        --neu: #b9689f;
+        --pos: #536ca5;
+        --navy: #4a1d33;
+        --blue: #934372;
+        --bg: #fbf0f5;
+        --sage: #c388a9;
+        --text: #2b1f26;
+        --muted: #7a6572;
+        --line: #efd9e4;
+        --head: 'Outfit', system-ui, sans-serif;
+        --body: 'DM Sans', system-ui, sans-serif;
+        transition: --mood 0.9s ease;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: var(--body);
+        color: var(--text);
+        line-height: 1.55;
+        min-height: 100vh;
+        overflow-x: hidden;
+        background: var(--bg);
+      }
+      button,
+      textarea,
+      input {
+        font: inherit;
+        color: inherit;
+      }
+      :focus-visible {
+        outline: 3px solid var(--blue);
+        outline-offset: 3px;
+        border-radius: 8px;
+      }
+
+      /* ---------- calm background: two soft blobs, no mood colours ---------- */
+      .aurora {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .aurora i {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(90px);
+        animation: drift 24s ease-in-out infinite alternate;
+      }
+      .aurora .b1 {
+        width: 560px;
+        height: 560px;
+        background: var(--sage);
+        opacity: 0.55;
+        top: -160px;
+        right: -120px;
+      }
+      .aurora .b2 {
+        width: 460px;
+        height: 460px;
+        background: var(--blue);
+        opacity: 0.12;
+        bottom: -160px;
+        left: -120px;
+        animation-duration: 30s;
+      }
+      .aurora .b3 {
+        display: none;
+      }
+      @keyframes drift {
+        from {
+          transform: translate(0, 0) scale(1);
+        }
+        to {
+          transform: translate(-60px, 50px) scale(1.15);
+        }
+      }
+      #fx {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        pointer-events: none;
+      }
+      header,
+      main,
+      footer {
+        position: relative;
+        z-index: 2;
+      }
+
+      /* ---------- header ---------- */
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: linear-gradient(100deg, #812d35, #934372 60%, #b9689f);
+        box-shadow: 0 8px 24px -16px rgba(74, 29, 51, 0.7);
+      }
+      .bar {
+        max-width: 1180px;
+        margin: auto;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        gap: 26px;
+        flex-wrap: wrap;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-family: var(--head);
+        font-weight: 800;
+        font-size: 1.4rem;
+        letter-spacing: -0.01em;
+        color: #fff;
+      }
+      .logo i {
+        display: flex;
+        gap: 3px;
+        align-items: flex-end;
+        height: 30px;
+      }
+      .logo i b {
+        width: 9px;
+        border-radius: 5px;
+        display: block;
+        animation: eq 1.8s ease-in-out infinite;
+        transform-origin: bottom;
+      }
+      .logo i b:nth-child(1) {
+        background: var(--neg);
+        height: 14px;
+      }
+      .logo i b:nth-child(2) {
+        background: var(--neu);
+        height: 24px;
+        animation-delay: 0.25s;
+      }
+      .logo i b:nth-child(3) {
+        background: var(--pos);
+        height: 30px;
+        animation-delay: 0.5s;
+      }
+      @keyframes eq {
+        0%,
+        100% {
+          transform: scaleY(1);
+        }
+        50% {
+          transform: scaleY(0.55);
+        }
+      }
+      nav {
+        display: flex;
+        gap: 2px;
+        flex: 1;
+        flex-wrap: wrap;
+        justify-content: center;
+        position: relative;
+      }
+      nav button {
+        position: relative;
+        z-index: 1;
+        background: none;
+        border: 0;
+        color: #e8c9d9;
+        padding: 9px 18px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: color 0.25s;
+      }
+      nav button:hover {
+        color: #fff;
+      }
+      nav button[aria-selected='true'],
+      nav button[aria-selected='true']:hover {
+        color: var(--navy);
+        font-weight: 600;
+      }
+      .ind {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        border-radius: 999px;
+        background: #fff;
+        transition:
+          transform 0.45s cubic-bezier(0.3, 1.3, 0.5, 1),
+          width 0.45s cubic-bezier(0.3, 1.3, 0.5, 1);
+        z-index: 0;
+      }
+      .pill {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 0.84rem;
+        color: #f6e3ec;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 7px 14px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .pill s {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #c9a3b8;
+        display: block;
+      }
+      .pill.live s {
+        background: #9db4e6;
+        animation: ping 1.8s infinite;
+      }
+      .pill.partial s {
+        background: var(--neu);
+      }
+      @keyframes ping {
+        0% {
+          box-shadow: 0 0 0 0 rgba(157, 180, 230, 0.7);
+        }
+        100% {
+          box-shadow: 0 0 0 10px rgba(157, 180, 230, 0);
+        }
+      }
+
+      /* ---------- layout ---------- */
+      main {
+        max-width: 1180px;
+        margin: auto;
+        padding: 46px 24px 70px;
+      }
+      .tab {
+        display: none;
+      }
+      .tab.on {
+        display: block;
+        animation: tabIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      @keyframes tabIn {
+        from {
+          opacity: 0;
+          transform: translateY(22px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      h1 {
+        font-family: var(--head);
+        font-weight: 800;
+        font-size: clamp(2.3rem, 5.4vw, 3.8rem);
+        line-height: 1.04;
+        letter-spacing: -0.025em;
+        max-width: 18ch;
+        margin: 0 auto;
+        text-align: center;
+        text-wrap: balance;
+        color: var(--navy);
+      }
+      h1 span {
+        display: inline-block;
+        animation: wordIn 0.8s cubic-bezier(0.2, 1.2, 0.4, 1) backwards;
+      }
+      h1 span:nth-child(1) {
+        animation-delay: 0.05s;
+      }
+      h1 span:nth-child(2) {
+        animation-delay: 0.14s;
+      }
+      h1 span:nth-child(3) {
+        animation-delay: 0.23s;
+      }
+      h1 span:nth-child(4) {
+        animation-delay: 0.32s;
+      }
+      h1 span:nth-child(5) {
+        animation-delay: 0.41s;
+      }
+      h1 span:nth-child(6) {
+        animation-delay: 0.5s;
+      }
+      @keyframes wordIn {
+        from {
+          opacity: 0;
+          transform: translateY(40px) rotate(4deg);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .lead {
+        color: var(--muted);
+        max-width: 58ch;
+        margin: 16px auto 36px;
+        text-align: center;
+        text-wrap: balance;
+        font-size: 1.06rem;
+      }
+      h2 {
+        font-family: var(--head);
+        color: var(--navy);
+        font-size: 1.45rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      .glass {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 26px;
+        padding: 26px;
+        box-shadow:
+          0 1px 0 #f5e4ec,
+          0 26px 50px -30px rgba(74, 29, 51, 0.4);
+      }
+      .rise {
+        animation: rise 0.8s cubic-bezier(0.2, 0.9, 0.2, 1) backwards;
+      }
+      .rise.d1 {
+        animation-delay: 0.55s;
+      }
+      .rise.d2 {
+        animation-delay: 0.7s;
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(34px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 24px;
+        align-items: start;
+      }
+      @media (max-width: 920px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* ---------- input card ---------- */
+      textarea {
+        width: 100%;
+        min-height: 180px;
+        resize: vertical;
+        border: 2px solid var(--line);
+        border-radius: 18px;
+        padding: 16px 18px;
+        background: #fffafd;
+        transition:
+          border-color 0.4s,
+          box-shadow 0.4s;
+        font-size: 1.06rem;
+        color: var(--text);
+      }
+      textarea::placeholder {
+        color: #b39aa8;
+      }
+      textarea:focus {
+        outline: none;
+        border-color: var(--mood);
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--mood) 18%, transparent);
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+      .btn {
+        position: relative;
+        overflow: hidden;
+        border: 0;
+        padding: 13px 24px;
+        border-radius: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        color: #fff;
+        background: var(--navy);
+        transition:
+          transform 0.2s,
+          box-shadow 0.3s,
+          background 0.25s;
+        box-shadow: 0 10px 22px -12px rgba(74, 29, 51, 0.8);
+      }
+      .btn:hover {
+        transform: translateY(-3px);
+        background: var(--blue);
+        box-shadow: 0 16px 28px -12px rgba(147, 67, 114, 0.9);
+      }
+      .btn:active {
+        transform: scale(0.95);
+      }
+      .btn.ghost {
+        background: transparent;
+        color: var(--navy);
+        border: 2px solid #dfb9cf;
+        box-shadow: none;
+        padding: 11px 22px;
+      }
+      .btn.ghost:hover {
+        border-color: var(--blue);
+        background: rgba(147, 67, 114, 0.08);
+        transform: translateY(-3px);
+      }
+      .dice {
+        display: inline-block;
+        transition: transform 0.6s cubic-bezier(0.3, 1.5, 0.5, 1);
+      }
+      .btn:hover .dice {
+        transform: rotate(360deg);
+      }
+      .ripple {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.45);
+        transform: scale(0);
+        animation: rip 0.65s ease-out forwards;
+        pointer-events: none;
+      }
+      .btn.ghost .ripple {
+        background: rgba(147, 67, 114, 0.25);
+      }
+      @keyframes rip {
+        to {
+          transform: scale(3.4);
+          opacity: 0;
+        }
+      }
+      .count {
+        margin-left: auto;
+        color: var(--muted);
+        font-size: 0.85rem;
+        font-variant-numeric: tabular-nums;
+      }
+      .samples {
+        margin-top: 22px;
+      }
+      .samples p {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .chip {
+        display: inline-block;
+        border: 1.5px solid var(--line);
+        background: #fff;
+        color: var(--text);
+        border-radius: 999px;
+        padding: 7px 15px;
+        margin: 0 8px 10px 0;
+        font-size: 0.88rem;
+        cursor: pointer;
+        text-align: left;
+        transition:
+          transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1),
+          border-color 0.2s,
+          background 0.2s;
+        animation: bob 5s ease-in-out infinite;
+      }
+      .chip:nth-child(2n) {
+        animation-delay: -1.4s;
+      }
+      .chip:nth-child(3n) {
+        animation-delay: -2.7s;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-4px);
+        }
+      }
+      .chip:hover {
+        animation-play-state: paused;
+        transform: scale(1.06) rotate(-1.5deg);
+      }
+      .chip.neg:hover {
+        border-color: var(--neg);
+        background: #f6e3e5;
+      }
+      .chip.neu:hover {
+        border-color: var(--neu);
+        background: #f7e6f0;
+      }
+      .chip.pos:hover {
+        border-color: var(--pos);
+        background: #e6ebf6;
+      }
+
+      /* ---------- mood card + mascot ---------- */
+      .mood-card {
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .mood-card::before {
+        content: '';
+        position: absolute;
+        inset: -40% -20% auto;
+        height: 75%;
+        background: radial-gradient(
+          closest-side,
+          color-mix(in srgb, var(--mood) 24%, transparent),
+          transparent
+        );
+        pointer-events: none;
+      }
+      .faceWrap {
+        width: min(250px, 68%);
+        margin: 0 auto;
+        position: relative;
+      }
+      .face {
+        width: 100%;
+        display: block;
+        overflow: visible;
+        animation: float 4.5s ease-in-out infinite;
+      }
+      @keyframes float {
+        50% {
+          transform: translateY(-9px);
+        }
+      }
+      .faceWrap.pop-pos {
+        animation: popPos 0.9s cubic-bezier(0.3, 1.6, 0.5, 1);
+      }
+      .faceWrap.pop-neg {
+        animation: popNeg 0.65s ease;
+      }
+      .faceWrap.pop-neu {
+        animation: popNeu 0.8s ease;
+      }
+      @keyframes popPos {
+        0% {
+          transform: scale(0.8) rotate(-8deg);
+        }
+        40% {
+          transform: scale(1.16) rotate(6deg);
+        }
+        70% {
+          transform: scale(0.96) rotate(-3deg);
+        }
+        100% {
+          transform: none;
+        }
+      }
+      @keyframes popNeg {
+        0%,
+        100% {
+          transform: none;
+        }
+        15% {
+          transform: translateX(-12px) rotate(-4deg);
+        }
+        35% {
+          transform: translateX(11px) rotate(3deg);
+        }
+        55% {
+          transform: translateX(-8px);
+        }
+        75% {
+          transform: translateX(5px);
+        }
+      }
+      @keyframes popNeu {
+        0% {
+          transform: rotate(0);
+        }
+        30% {
+          transform: rotate(-9deg);
+        }
+        65% {
+          transform: rotate(7deg);
+        }
+        100% {
+          transform: rotate(0);
+        }
+      }
+      .face .shadow {
+        fill: rgba(74, 29, 51, 0.16);
+        animation: shadow 4.5s ease-in-out infinite;
+        transform-origin: 100px 196px;
+      }
+      @keyframes shadow {
+        50% {
+          transform: scale(0.82);
+          opacity: 0.6;
+        }
+      }
+      .eyes {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: blink 5.2s infinite;
+      }
+      @keyframes blink {
+        0%,
+        94%,
+        100% {
+          transform: scaleY(1);
+        }
+        97% {
+          transform: scaleY(0.08);
+        }
+      }
+      .brow {
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+      #tear {
+        opacity: 0;
+      }
+      #tear.on {
+        animation: tear 1.8s ease-in infinite;
+      }
+      @keyframes tear {
+        0% {
+          transform: translateY(0);
+          opacity: 0;
+        }
+        15% {
+          opacity: 0.95;
+        }
+        100% {
+          transform: translateY(46px);
+          opacity: 0;
+        }
+      }
+      .verdict {
+        font-family: var(--head);
+        font-weight: 800;
+        font-size: 2.5rem;
+        line-height: 1;
+        margin-top: 10px;
+        color: var(--mood);
+        transition: color 0.8s;
+        position: relative;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 0.92rem;
+        margin-top: 8px;
+        min-height: 1.4em;
+        position: relative;
+      }
+      .score {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-top: 14px;
+        padding: 6px 16px;
+        border-radius: 999px;
+        background: #f9ecf3;
+        border: 1px solid var(--line);
+        font-size: 0.88rem;
+        color: var(--muted);
+        position: relative;
+      }
+      .score b {
+        font-family: var(--head);
+        font-size: 1.25rem;
+        color: var(--navy);
+        font-variant-numeric: tabular-nums;
+        min-width: 3.2ch;
+        text-align: right;
+      }
+      .bars {
+        margin-top: 22px;
+        text-align: left;
+        display: grid;
+        gap: 13px;
+        position: relative;
+      }
+      .bar-row {
+        display: grid;
+        grid-template-columns: 82px 1fr 46px;
+        gap: 12px;
+        align-items: center;
+        font-size: 0.92rem;
+      }
+      .track {
+        height: 14px;
+        background: #f1e0e9;
+        border-radius: 99px;
+        overflow: hidden;
+      }
+      .fill {
+        height: 100%;
+        width: 0;
+        border-radius: 99px;
+        transition: width 1s cubic-bezier(0.2, 1.2, 0.3, 1);
+        background-image: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0),
+          rgba(255, 255, 255, 0.4),
+          rgba(255, 255, 255, 0)
+        );
+        background-size: 60px 100%;
+        background-repeat: no-repeat;
+        animation: sheen 2.6s linear infinite;
+      }
+      @keyframes sheen {
+        from {
+          background-position: -60px 0;
+        }
+        to {
+          background-position: 260px 0;
+        }
+      }
+      .bar-row output {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        color: var(--navy);
+      }
+      .why {
+        margin-top: 22px;
+        text-align: left;
+        border-top: 1px dashed #e5c9d8;
+        padding-top: 16px;
+        position: relative;
+      }
+      .why h3 {
+        font-size: 0.98rem;
+        font-weight: 600;
+        color: var(--navy);
+      }
+      .why p {
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin: 2px 0 12px;
+      }
+      .bub {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 4px 13px;
+        margin: 0 7px 8px 0;
+        font-weight: 600;
+        color: var(--navy);
+        animation: pop 0.55s cubic-bezier(0.3, 1.7, 0.5, 1) backwards;
+        cursor: default;
+        transition: transform 0.2s;
+      }
+      .bub:hover {
+        transform: scale(1.12);
+      }
+      @keyframes pop {
+        from {
+          transform: scale(0);
+          opacity: 0;
+        }
+      }
+      .source {
+        margin-top: 14px;
+        font-size: 0.78rem;
+        color: var(--muted);
+        text-align: left;
+        position: relative;
+      }
+
+      /* ---------- batch / history / model ---------- */
+      .donutRow {
+        display: flex;
+        gap: 30px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 22px;
+      }
+      .donut {
+        width: 170px;
+        height: 170px;
+        position: relative;
+        flex: none;
+      }
+      .donut svg {
+        width: 100%;
+        transform: rotate(-90deg);
+      }
+      .donut circle {
+        fill: none;
+        stroke-width: 16;
+        transition: stroke-dasharray 1.1s cubic-bezier(0.2, 0.9, 0.2, 1);
+      }
+      .donut .mid {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        text-align: center;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .donut .mid b {
+        font-family: var(--head);
+        font-size: 2rem;
+        color: var(--navy);
+        line-height: 1;
+      }
+      .legend {
+        display: grid;
+        gap: 10px;
+        font-size: 0.95rem;
+      }
+      .legend span {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .legend span::before {
+        content: '';
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--c);
+      }
+      .tablewrap {
+        overflow-x: auto;
+        margin-top: 22px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.93rem;
+      }
+      th {
+        text-align: left;
+        font-weight: 600;
+        color: var(--navy);
+        padding: 10px 12px;
+        border-bottom: 2px solid var(--line);
+        white-space: nowrap;
+      }
+      td {
+        padding: 11px 12px;
+        border-bottom: 1px solid #f6e6ee;
+        vertical-align: middle;
+      }
+      td.t {
+        max-width: 520px;
+        overflow-wrap: anywhere;
+      }
+      tbody tr {
+        animation: rowIn 0.5s ease backwards;
+      }
+      @keyframes rowIn {
+        from {
+          opacity: 0;
+          transform: translateX(-24px);
+        }
+      }
+      .tag {
+        display: inline-block;
+        padding: 3px 13px;
+        border-radius: 99px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.82rem;
+      }
+      .tag.negative {
+        background: var(--neg);
+      }
+      .tag.neutral {
+        background: var(--neu);
+        color: #fff;
+      }
+      .tag.positive {
+        background: var(--pos);
+      }
+      .mini {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 120px;
+      }
+      .mini i {
+        height: 7px;
+        border-radius: 9px;
+        display: block;
+      }
+      .hist {
+        list-style: none;
+        padding: 0;
+        margin-top: 14px;
+      }
+      .hist li {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        padding: 14px 12px;
+        border-bottom: 1px solid #f6e6ee;
+        cursor: pointer;
+        border-radius: 14px;
+        transition:
+          background 0.2s,
+          transform 0.25s;
+        animation: rowIn 0.5s ease backwards;
+      }
+      .hist li:hover {
+        background: #f9ecf3;
+        transform: translateX(6px);
+      }
+      .dot {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        flex: none;
+      }
+      .hist span.when {
+        margin-left: auto;
+        font-size: 0.8rem;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .empty {
+        text-align: center;
+        padding: 40px 10px;
+        color: var(--muted);
+      }
+      .empty b {
+        display: block;
+        color: var(--navy);
+        font-family: var(--head);
+        font-size: 1.2rem;
+        margin-bottom: 6px;
+      }
+      .code {
+        background: #f3e1ec;
+        color: var(--navy);
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.88rem;
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 18px;
+        margin: 22px 0 28px;
+      }
+      .kpi {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        border-radius: 22px;
+        padding: 18px 20px;
+        background: #fcf2f7;
+        border: 1px solid var(--line);
+      }
+      .ring {
+        width: 84px;
+        height: 84px;
+        position: relative;
+        flex: none;
+      }
+      .ring svg {
+        width: 100%;
+        transform: rotate(-90deg);
+      }
+      .ring circle {
+        fill: none;
+        stroke-width: 9;
+        stroke-linecap: round;
+      }
+      .ring .bg {
+        stroke: #efdbe6;
+      }
+      .ring .fg {
+        stroke-dasharray: 213.6;
+        stroke-dashoffset: 213.6;
+        transition: stroke-dashoffset 1.4s cubic-bezier(0.2, 0.9, 0.2, 1);
+      }
+      .ring b {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        font-family: var(--head);
+        font-size: 1.05rem;
+        font-variant-numeric: tabular-nums;
+        color: var(--navy);
+      }
+      .kpi span {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .cm {
+        display: grid;
+        grid-template-columns: 86px repeat(3, 1fr);
+        gap: 7px;
+        max-width: 540px;
+        margin-top: 14px;
+        font-size: 0.88rem;
+      }
+      .cm .h {
+        color: var(--muted);
+        align-self: center;
+        text-align: center;
+      }
+      .cm .c {
+        border-radius: 14px;
+        padding: 22px 8px;
+        text-align: center;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        animation: pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) backwards;
+        transition: transform 0.2s;
+      }
+      .cm .c:hover {
+        transform: scale(1.08);
+      }
+      .f1row {
+        display: grid;
+        grid-template-columns: 78px 1fr 52px;
+        gap: 12px;
+        align-items: center;
+        margin-top: 12px;
+        font-size: 0.9rem;
+      }
+      .f1row b {
+        color: var(--navy);
+      }
+      .pipe {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin: 18px 0 4px;
+      }
+      .pipe div {
+        background: #fff;
+        border: 2px solid var(--line);
+        border-radius: 14px;
+        padding: 10px 15px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--navy);
+        animation: lit 7s infinite;
+      }
+      .pipe div:nth-of-type(2) {
+        animation-delay: 1s;
+      }
+      .pipe div:nth-of-type(3) {
+        animation-delay: 2s;
+      }
+      .pipe div:nth-of-type(4) {
+        animation-delay: 3s;
+      }
+      .pipe div:nth-of-type(5) {
+        animation-delay: 4s;
+      }
+      .pipe div:nth-of-type(6) {
+        animation-delay: 5s;
+      }
+      @keyframes lit {
+        0%,
+        16%,
+        100% {
+          border-color: var(--line);
+          background: #fff;
+          transform: none;
+        }
+        6%,
+        12% {
+          border-color: var(--blue);
+          background: #f3e1ec;
+          transform: translateY(-4px);
+        }
+      }
+      .pipe em {
+        color: #b39aa8;
+        font-style: normal;
+      }
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+      }
+      @media (max-width: 920px) {
+        .two {
+          grid-template-columns: 1fr;
+        }
+      }
+      .row .count {
+        padding-left: 4px;
+      }
+      .samples {
+        text-align: left;
+      }
+      footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.85rem;
+        padding: 0 24px 40px;
+      }
+      input[type='file'] {
+        display: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      class="aurora"
+      aria-hidden="true">
+      <i class="b1"></i><i class="b2"></i><i class="b3"></i>
+    </div>
+    <canvas
+      id="fx"
+      aria-hidden="true"></canvas>
+
+    <header>
+      <div class="bar">
+        <div class="logo">
+          <i aria-hidden="true"><b></b><b></b><b></b></i>Moodora
+        </div>
+        <nav
+          role="tablist"
+          aria-label="Sections"
+          id="nav">
+          <span
+            class="ind"
+            id="ind"></span>
+          <button
+            role="tab"
+            aria-selected="true"
+            data-tab="analyze">
+            Analyze
+          </button>
+          <button
+            role="tab"
+            aria-selected="false"
+            data-tab="batch">
+            Batch
+          </button>
+          <button
+            role="tab"
+            aria-selected="false"
+            data-tab="history">
+            History
+          </button>
+          <button
+            role="tab"
+            aria-selected="false"
+            data-tab="model">
+            Model report
+          </button>
+        </nav>
+        <div
+          class="pill"
+          id="pill">
+          <s></s><span>Checking backend…</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- ================= ANALYZE ================= -->
+      <section
+        class="tab on"
+        id="tab-analyze">
+        <h1>
+          <span>Read</span> <span>the</span> <span>mood</span>
+          <span>behind</span> <span>any</span> <span>text</span>
+        </h1>
+        <p
+          class="lead rise d1"
+          style="animation-delay: 0.6s">
+          Type anything. The face on the right reacts while you type, and tells
+          you if your text feels negative, neutral or positive.
+        </p>
+
+        <div class="grid">
+          <div class="glass rise d1">
+            <textarea
+              id="input"
+              maxlength="1500"
+              aria-label="Text to analyze"
+              placeholder="Write something…"></textarea>
+            <div class="row">
+              <button
+                class="btn"
+                id="go">
+                Analyze text
+              </button>
+              <button
+                class="btn ghost"
+                id="surprise">
+                <span class="dice">🎲</span> Surprise me
+              </button>
+              <button
+                class="btn ghost"
+                id="clear">
+                Clear
+              </button>
+              <span
+                class="count"
+                id="count"
+                >0 / 1500</span
+              >
+            </div>
+            <div class="samples">
+              <p>Or tap an example</p>
+              <span id="samples"></span>
+            </div>
+          </div>
+
+          <div
+            class="glass mood-card rise d2"
+            aria-live="polite">
+            <div
+              class="faceWrap"
+              id="faceWrap">
+              <svg
+                class="face"
+                id="face"
+                viewBox="0 0 200 210"
+                role="img"
+                aria-label="Mood face">
+                <defs>
+                  <radialGradient
+                    id="fg"
+                    cx="34%"
+                    cy="26%"
+                    r="85%">
+                    <stop
+                      offset="0"
+                      style="
+                        stop-color: color-mix(in srgb, var(--mood) 55%, #fff);
+                      " />
+                    <stop
+                      offset="1"
+                      style="stop-color: var(--mood)" />
+                  </radialGradient>
+                </defs>
+                <ellipse
+                  class="shadow"
+                  cx="100"
+                  cy="196"
+                  rx="52"
+                  ry="7" />
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="86"
+                  fill="url(#fg)" />
+                <ellipse
+                  cx="68"
+                  cy="52"
+                  rx="26"
+                  ry="12"
+                  fill="#fff"
+                  opacity=".22"
+                  transform="rotate(-28 68 52)" />
+                <g
+                  id="cheeks"
+                  opacity="0">
+                  <circle
+                    cx="44"
+                    cy="118"
+                    r="13"
+                    fill="#ff8fa3"
+                    opacity=".7" />
+                  <circle
+                    cx="156"
+                    cy="118"
+                    r="13"
+                    fill="#ff8fa3"
+                    opacity=".7" />
+                </g>
+                <g class="eyes">
+                  <ellipse
+                    cx="70"
+                    cy="92"
+                    rx="15"
+                    ry="17"
+                    fill="#fff" />
+                  <circle
+                    id="pL"
+                    cx="70"
+                    cy="92"
+                    r="8"
+                    fill="#14264a" />
+                  <circle
+                    cx="73"
+                    cy="88"
+                    r="2.6"
+                    fill="#fff" />
+                  <ellipse
+                    cx="130"
+                    cy="92"
+                    rx="15"
+                    ry="17"
+                    fill="#fff" />
+                  <circle
+                    id="pR"
+                    cx="130"
+                    cy="92"
+                    r="8"
+                    fill="#14264a" />
+                  <circle
+                    cx="133"
+                    cy="88"
+                    r="2.6"
+                    fill="#fff" />
+                </g>
+                <line
+                  class="brow"
+                  id="browL"
+                  x1="50"
+                  y1="62"
+                  x2="90"
+                  y2="62"
+                  stroke="#14264a"
+                  stroke-width="6.5"
+                  stroke-linecap="round" />
+                <line
+                  class="brow"
+                  id="browR"
+                  x1="110"
+                  y1="62"
+                  x2="150"
+                  y2="62"
+                  stroke="#14264a"
+                  stroke-width="6.5"
+                  stroke-linecap="round" />
+                <path
+                  id="tear"
+                  d="M58 112 q-7 11 0 15 q7 -4 0 -15z"
+                  fill="#a8dcff" />
+                <path
+                  id="mouthFill"
+                  fill="#4a1220"
+                  opacity="0" />
+                <path
+                  id="mouth"
+                  fill="none"
+                  stroke="#14264a"
+                  stroke-width="6.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </div>
+            <div
+              class="verdict"
+              id="verdict">
+              Say something…
+            </div>
+            <div
+              class="sub"
+              id="sub">
+              The face wakes up as you type
+            </div>
+            <div class="score">Mood score <b id="scoreNum">—</b></div>
+            <div
+              class="bars"
+              id="bars"></div>
+            <div
+              class="why"
+              id="why"
+              hidden>
+              <h3>Why this result</h3>
+              <p>
+                Bigger bubble = bigger push. Blue pulls positive, maroon pulls
+                negative.
+              </p>
+              <div id="whyList"></div>
+            </div>
+            <div
+              class="source"
+              id="source"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= BATCH ================= -->
+      <section
+        class="tab"
+        id="tab-batch">
+        <h1>
+          <span>Classify</span> <span>many</span> <span>texts</span>
+          <span>at</span> <span>once</span>
+        </h1>
+        <p class="lead">
+          Paste one text per line, or upload a CSV (uses the
+          <span class="code">text</span> column) or a TXT file.
+        </p>
+        <div class="glass">
+          <textarea
+            id="batchIn"
+            placeholder="Great service, will come again&#10;The package arrived broken&#10;It's okay, nothing special"></textarea>
+          <div class="row">
+            <button
+              class="btn"
+              id="batchGo">
+              Classify all
+            </button>
+            <label
+              class="btn ghost"
+              for="file"
+              style="cursor: pointer"
+              >Upload CSV / TXT</label
+            >
+            <input
+              type="file"
+              id="file"
+              accept=".csv,.txt" />
+            <button
+              class="btn ghost"
+              id="export"
+              hidden>
+              Download results
+            </button>
+          </div>
+          <div
+            id="batchOut"
+            hidden>
+            <div class="donutRow">
+              <div class="donut">
+                <svg
+                  viewBox="0 0 120 120"
+                  id="donutSvg"></svg>
+                <div class="mid">
+                  <div><b id="donutN">0</b><br />texts</div>
+                </div>
+              </div>
+              <div
+                class="legend"
+                id="legend"></div>
+            </div>
+            <div class="tablewrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Text</th>
+                    <th>Label</th>
+                    <th>Confidence</th>
+                  </tr>
+                </thead>
+                <tbody id="batchBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= HISTORY ================= -->
+      <section
+        class="tab"
+        id="tab-history">
+        <h1><span>Your</span> <span>recent</span> <span>checks</span></h1>
+        <p class="lead">
+          Texts you analyzed with the button are saved here. Click one to open
+          it again.
+        </p>
+        <div class="glass">
+          <div
+            class="row"
+            style="margin: 0">
+            <h2 style="margin: 0">History</h2>
+            <button
+              class="btn ghost"
+              id="wipe"
+              style="margin-left: auto">
+              Clear history
+            </button>
+          </div>
+          <ul
+            class="hist"
+            id="hist"></ul>
+        </div>
+      </section>
+
+      <!-- ================= MODEL ================= -->
+      <section
+        class="tab"
+        id="tab-model">
+        <h1>
+          <span>How</span> <span>well</span> <span>does</span> <span>it</span>
+          <span>do?</span>
+        </h1>
+        <p class="lead">
+          Scores come from a test set that the model never saw during training.
+        </p>
+        <div
+          class="glass"
+          style="margin-bottom: 24px">
+          <h2>Pipeline</h2>
+          <div class="pipe">
+            <div>Raw text</div>
+            <em>→</em>
+            <div>Remove stop-words</div>
+            <em>→</em>
+            <div>Lemmatize</div>
+            <em>→</em>
+            <div>TF-IDF</div>
+            <em>→</em>
+            <div>Classifier</div>
+            <em>→</em>
+            <div>Negative / Neutral / Positive</div>
+          </div>
+        </div>
+        <div
+          class="glass"
+          id="metricsBox"></div>
+      </section>
+    </main>
+
+    <footer>
+      Moodora · Multi-class Sentiment Classifier · Progree AI
+      Internship
+    </footer>
+
+    <script>
+      const $ = (s) => document.querySelector(s),
+        $$ = (s) => [...document.querySelectorAll(s)];
+      const API = location.protocol.startsWith('http')
+        ? ''
+        : 'http://127.0.0.1:5000';
+      const LABELS = ['negative', 'neutral', 'positive'];
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const META = {
+        negative: { color: '#812D35', title: 'Negative' },
+        neutral: { color: '#B9689F', title: 'Neutral' },
+        positive: { color: '#536CA5', title: 'Positive' },
+      };
+      const SAMPLES = [
+        [
+          'neg',
+          'The flight was delayed three hours and nobody told us anything.',
+        ],
+        [
+          'pos',
+          'Amazing service! The crew was so kind and everything was on time.',
+        ],
+        ['neu', 'I booked a ticket for Tuesday morning.'],
+        ['neg', 'Terrible food, I will never order from here again.'],
+        ['pos', 'Thank you so much, you saved my trip!'],
+        ['neu', 'The package was delivered to the front desk.'],
+      ];
+      const MORE = [
+        'My luggage is lost again, this is unacceptable.',
+        'Best flight I have ever had, thank you team!',
+        'Boarding starts at 6 pm at gate 12.',
+        'Rude staff and a very long wait. Never again.',
+        'Smooth check-in and a friendly crew, loved it.',
+        'Can I change my seat to the window?',
+        'Worst customer service ever, still waiting for my refund.',
+        'Great job getting us home on time despite the storm!',
+      ];
+      let backend = { up: false, model: false };
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;',
+              "'": '&#39;',
+            })[c],
+        );
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+      /* ---------- backend status ---------- */
+      async function checkHealth() {
+        const pill = $('#pill'),
+          label = pill.querySelector('span');
+        try {
+          const ctl = new AbortController();
+          setTimeout(() => ctl.abort(), 2500);
+          const j = await (
+            await fetch(API + '/api/health', { signal: ctl.signal })
+          ).json();
+          backend = { up: true, model: !!j.model_loaded };
+        } catch (e) {
+          backend = { up: false, model: false };
+        }
+        pill.className =
+          'pill ' + (backend.model ? 'live' : backend.up ? 'partial' : '');
+        label.textContent = backend.model
+          ? 'Connected'
+          : backend.up
+            ? 'Backend on · model not trained yet (demo mode)'
+            : 'Backend offline (demo mode)';
+      }
+
+      /* ---------- demo engine (only when no trained model) ---------- */
+      const POS = new Set(
+        'good great amazing awesome excellent love loved lovely best happy kind friendly fast perfect wonderful fantastic nice thanks thank helpful smooth impressed enjoy enjoyed recommend comfortable clean delicious brilliant superb saved'.split(
+          ' ',
+        ),
+      );
+      const NEG = new Set(
+        'bad terrible awful worst hate hated horrible rude slow late delayed delay broken lost angry poor disappointing disappointed dirty useless waste never cancelled canceled refund problem issue complaint disgusting unacceptable annoying stuck nobody'.split(
+          ' ',
+        ),
+      );
+      const NOT = new Set(['not', 'no', 'never', 'cannot', 'hardly']);
+      const STOP = new Set(
+        'a an the and or of to in on at for with is are was were be been am it its this that these those i me my we our you your he she they them his her their as by from up out so than then there here do does did have has had will would can could should just about into over'.split(
+          ' ',
+        ),
+      );
+      function demoPredict(text) {
+        const toks = text
+          .toLowerCase()
+          .replace(/n't\b/g, ' not')
+          .replace(/[^a-z\s]/g, ' ')
+          .split(/\s+/)
+          .filter(Boolean);
+        let s = 0;
+        toks.forEach((w, i) => {
+          let v = POS.has(w) ? 1 : NEG.has(w) ? -1 : 0;
+          if (!v) return;
+          if (NOT.has(toks[i - 1]) || NOT.has(toks[i - 2])) v = -v * 0.8;
+          s += v;
+        });
+        const e = {
+          negative: Math.exp(-s * 0.9),
+          positive: Math.exp(s * 0.9),
+          neutral: Math.exp(0.8 - Math.abs(s) * 0.5),
+        };
+        const z = e.negative + e.neutral + e.positive,
+          probs = {};
+        LABELS.forEach((k) => (probs[k] = +(e[k] / z).toFixed(4)));
+        const label = LABELS.reduce((a, b) => (probs[a] >= probs[b] ? a : b));
+        const cleaned = toks.filter((w) => w.length > 1 && !STOP.has(w));
+        const words = [...new Set(cleaned)].map((w) => ({
+          w,
+          s: POS.has(w) ? 1 : NEG.has(w) ? -1 : 0,
+        }));
+        return {
+          text,
+          label,
+          probs,
+          cleaned: cleaned.join(' '),
+          words,
+          demo: true,
+        };
+      }
+      async function predict(text) {
+        if (backend.up && backend.model) {
+          try {
+            const r = await fetch(API + '/api/predict', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text }),
+            });
+            if (r.ok) return await r.json();
+          } catch (e) {
+            await checkHealth();
+          }
+        }
+        return demoPredict(text);
+      }
+      async function predictBatch(texts) {
+        if (backend.up && backend.model) {
+          try {
+            const r = await fetch(API + '/api/predict-batch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ texts }),
+            });
+            if (r.ok) return (await r.json()).results;
+          } catch (e) {
+            await checkHealth();
+          }
+        }
+        return texts.map(demoPredict);
+      }
+
+      /* ---------- small helpers: count-up + ripple ---------- */
+      function countTo(el, to, fmt = (v) => Math.round(v), dur = 900) {
+        const from = parseFloat(el.dataset.v || 0);
+        el.dataset.v = to;
+        cancelAnimationFrame(el._r);
+        if (reduce) {
+          el.textContent = fmt(to);
+          return;
+        }
+        const t0 = performance.now();
+        const step = (t) => {
+          const p = Math.min(1, (t - t0) / dur),
+            e = 1 - Math.pow(1 - p, 3);
+          el.textContent = fmt(from + (to - from) * e);
+          if (p < 1) el._r = requestAnimationFrame(step);
+        };
+        el._r = requestAnimationFrame(step);
+      }
+      document.addEventListener('pointerdown', (e) => {
+        const b = e.target.closest('.btn');
+        if (!b || reduce) return;
+        const r = b.getBoundingClientRect(),
+          d = Math.max(r.width, r.height),
+          s = document.createElement('span');
+        s.className = 'ripple';
+        s.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+        b.appendChild(s);
+        setTimeout(() => s.remove(), 700);
+      });
+
+      /* ---------- tabs + sliding indicator ---------- */
+      function moveInd() {
+        const on = $('nav button[aria-selected=true]'),
+          ind = $('#ind');
+        ind.style.width = on.offsetWidth + 'px';
+        ind.style.transform = `translateX(${on.offsetLeft}px)`;
+      }
+      $$('nav button').forEach((b) =>
+        b.addEventListener('click', () => {
+          $$('nav button').forEach((x) =>
+            x.setAttribute('aria-selected', x === b),
+          );
+          $$('.tab').forEach((t) =>
+            t.classList.toggle('on', t.id === 'tab-' + b.dataset.tab),
+          );
+          moveInd();
+          if (b.dataset.tab === 'model') loadMetrics();
+          if (b.dataset.tab === 'history') renderHistory();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }),
+      );
+      addEventListener('resize', moveInd);
+      addEventListener('load', moveInd);
+
+      /* ---------- mascot face (tweened every frame) ---------- */
+      const F = {
+        s: 0,
+        neg: 0,
+        pos: 0,
+        tS: 0,
+        tN: 0,
+        tP: 0,
+        look: { x: 0, y: 0 },
+        tl: { x: 0, y: 0 },
+      };
+      const el = {
+        mouth: $('#mouth'),
+        fill: $('#mouthFill'),
+        bl: $('#browL'),
+        br: $('#browR'),
+        pl: $('#pL'),
+        pr: $('#pR'),
+        cheeks: $('#cheeks'),
+        tear: $('#tear'),
+      };
+      function drawFace() {
+        const k = reduce ? 1 : 0.1;
+        F.s += (F.tS - F.s) * k;
+        F.neg += (F.tN - F.neg) * k;
+        F.pos += (F.tP - F.pos) * k;
+        F.look.x += (F.tl.x - F.look.x) * 0.18;
+        F.look.y += (F.tl.y - F.look.y) * 0.18;
+        const s = F.s,
+          endY = 138 - s * 8,
+          ctrl = 138 + s * 34,
+          x1 = 66 - s * 7,
+          x2 = 134 + s * 7;
+        const d = `M${x1} ${endY} Q100 ${ctrl} ${x2} ${endY}`;
+        el.mouth.setAttribute('d', d);
+        el.fill.setAttribute('d', d + ' Z');
+        el.fill.setAttribute(
+          'opacity',
+          clamp((s - 0.3) / 0.5, 0, 1).toFixed(2),
+        );
+        const tilt = F.neg * 20 - F.pos * 4,
+          lift = -F.pos * 6 - F.neg * 2;
+        el.bl.style.transform = `translateY(${lift}px) rotate(${tilt}deg)`;
+        el.br.style.transform = `translateY(${lift}px) rotate(${-tilt}deg)`;
+        el.cheeks.setAttribute('opacity', clamp(F.pos * 1.3, 0, 1).toFixed(2));
+        el.pl.setAttribute('cx', 70 + F.look.x);
+        el.pl.setAttribute('cy', 92 + F.look.y);
+        el.pr.setAttribute('cx', 130 + F.look.x);
+        el.pr.setAttribute('cy', 92 + F.look.y);
+        el.tear.classList.toggle('on', F.tN > 0.7);
+        requestAnimationFrame(drawFace);
+      }
+      requestAnimationFrame(drawFace);
+      addEventListener('pointermove', (e) => {
+        const r = $('#face').getBoundingClientRect(),
+          cx = r.left + r.width / 2,
+          cy = r.top + r.height * 0.45;
+        const dx = e.clientX - cx,
+          dy = e.clientY - cy,
+          dist = Math.hypot(dx, dy) || 1,
+          m = Math.min(6, dist / 40);
+        F.tl.x = (dx / dist) * m;
+        F.tl.y = (dy / dist) * m * 0.9;
+      });
+      function popFace(label) {
+        const w = $('#faceWrap');
+        w.className = 'faceWrap';
+        void w.offsetWidth;
+        w.classList.add(
+          label === 'positive'
+            ? 'pop-pos'
+            : label === 'negative'
+              ? 'pop-neg'
+              : 'pop-neu',
+        );
+      }
+
+      /* ---------- particles: confetti / rain / sparkles ---------- */
+      const fx = $('#fx'),
+        ctx = fx.getContext('2d');
+      let parts = [],
+        fxOn = false;
+      function sizeFx() {
+        fx.width = innerWidth;
+        fx.height = innerHeight;
+      }
+      sizeFx();
+      addEventListener('resize', sizeFx);
+      const rnd = (a, b) => a + Math.random() * (b - a);
+      function burst(kind) {
+        if (reduce) return;
+        parts = []; // new mood = clean slate (no leftover confetti during rain)
+        const r = $('#face').getBoundingClientRect(),
+          cx = r.left + r.width / 2,
+          cy = r.top + r.height / 2;
+        if (kind === 'positive') {
+          const cols = ['#536CA5', '#B9689F', '#C388A9', '#934372', '#812D35'];
+          for (let i = 0; i < 130; i++)
+            parts.push({
+              k: 'c',
+              x: cx,
+              y: cy,
+              vx: rnd(-9, 9),
+              vy: rnd(-17, -4),
+              g: 0.38,
+              rot: rnd(0, 6),
+              vr: rnd(-0.3, 0.3),
+              w: rnd(6, 12),
+              h: rnd(4, 8),
+              col: cols[i % 5],
+              life: 150,
+            });
+        } else if (kind === 'negative') {
+          for (let i = 0; i < 85; i++)
+            parts.push({
+              k: 'r',
+              x: rnd(0, innerWidth),
+              y: rnd(-400, 0),
+              vx: -2,
+              vy: rnd(11, 19),
+              len: rnd(14, 28),
+              col: 'rgba(129,45,53,.55)',
+              life: 120,
+            });
+        } else {
+          for (let i = 0; i < 34; i++)
+            parts.push({
+              k: 's',
+              x: cx + rnd(-110, 110),
+              y: cy + rnd(-80, 90),
+              vx: rnd(-0.8, 0.8),
+              vy: rnd(-2.2, -0.6),
+              r: rnd(2, 5),
+              col: '#C388A9',
+              life: 100,
+            });
+        }
+        if (!fxOn) {
+          fxOn = true;
+          requestAnimationFrame(loopFx);
+        }
+      }
+      function loopFx() {
+        ctx.clearRect(0, 0, fx.width, fx.height);
+        parts.forEach((p) => {
+          p.life--;
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.k === 'c') {
+            p.vy += p.g;
+            p.vx *= 0.99;
+            p.rot += p.vr;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.col;
+            ctx.globalAlpha = clamp(p.life / 40, 0, 1);
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctx.restore();
+          } else if (p.k === 'r') {
+            ctx.strokeStyle = p.col;
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x + p.vx * 1.6, p.y - p.len);
+            ctx.stroke();
+          } else {
+            ctx.globalAlpha = clamp(p.life / 50, 0, 1);
+            ctx.fillStyle = p.col;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, 7);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        });
+        parts = parts.filter((p) => p.life > 0 && p.y < fx.height + 60);
+        if (parts.length) requestAnimationFrame(loopFx);
+        else {
+          fxOn = false;
+          ctx.clearRect(0, 0, fx.width, fx.height);
+        }
+      }
+
+      /* ---------- analyzer UI ---------- */
+      $('#bars').innerHTML = LABELS.map(
+        (k) =>
+          `<div class="bar-row"><span>${META[k].title}</span><div class="track"><div class="fill" id="f-${k}" style="background-color:${META[k].color}"></div></div><output id="p-${k}">0%</output></div>`,
+      ).join('');
+      $('#samples').innerHTML = SAMPLES.map(
+        ([c, t]) =>
+          `<button class="chip ${c}" type="button">${esc(t)}</button>`,
+      ).join('');
+      $$('#samples .chip').forEach((c, i) =>
+        c.addEventListener('click', () => {
+          $('#input').value = SAMPLES[i][1];
+          analyzeNow();
+          $('#input').focus();
+        }),
+      );
+
+      let lastLabel = null;
+      function render(r, { celebrate = false } = {}) {
+        const root = document.documentElement;
+        if (!r) {
+          root.style.setProperty('--mood', '#934372');
+          F.tS = F.tN = F.tP = 0;
+          lastLabel = null;
+          $('#verdict').textContent = 'Say something…';
+          $('#sub').textContent = 'The face wakes up as you type';
+          $('#scoreNum').textContent = '—';
+          $('#scoreNum').dataset.v = 0;
+          LABELS.forEach((k) => {
+            $('#f-' + k).style.width = '0';
+            $('#p-' + k).textContent = '0%';
+            $('#p-' + k).dataset.v = 0;
+          });
+          $('#why').hidden = true;
+          $('#source').textContent = '';
+          return;
+        }
+        const score = (r.probs.positive || 0) - (r.probs.negative || 0),
+          m = META[r.label];
+        root.style.setProperty('--mood', m.color);
+        F.tS = clamp(score * 1.1, -1, 1);
+        F.tN = r.probs.negative || 0;
+        F.tP = r.probs.positive || 0;
+        $('#verdict').textContent = m.title;
+        $('#sub').textContent =
+          `${Math.round(r.probs[r.label] * 100)}% confident`;
+        countTo($('#scoreNum'), Math.round(score * 100), (v) => {
+          v = Math.round(v);
+          return (v > 0 ? '+' : '') + v;
+        });
+        LABELS.forEach((k) => {
+          const p = (r.probs[k] || 0) * 100;
+          $('#f-' + k).style.width = p + '%';
+          countTo($('#p-' + k), p, (v) => Math.round(v) + '%');
+        });
+        const ws = (r.words || []).filter((w) => w.w);
+        $('#why').hidden = !ws.length;
+        $('#whyList').innerHTML = ws
+          .map((w, i) => {
+            const c =
+              w.s > 0.08
+                ? META.positive.color
+                : w.s < -0.08
+                  ? META.negative.color
+                  : '#b39aa8';
+            const bg = `color-mix(in srgb,${c} ${w.s === 0 ? 14 : Math.round(16 + Math.abs(w.s) * 26)}%,#fff)`;
+            return `<span class="bub" style="background:${bg};border:1.5px solid ${c};font-size:${(0.85 + Math.abs(w.s) * 0.55).toFixed(2)}rem;animation-delay:${i * 70}ms" title="${w.s > 0 ? 'pushes positive' : w.s < 0 ? 'pushes negative' : 'neutral word'}">${esc(w.w)}</span>`;
+          })
+          .join('');
+        $('#source').textContent = r.demo
+          ? 'Demo mode: simple keyword rules, not your trained model. Start the backend for real predictions.'
+          : 'Predicted by your trained TF-IDF + Logistic Regression model.';
+        if (r.label !== lastLabel || celebrate) {
+          popFace(r.label);
+          if (celebrate) burst(r.label);
+        }
+        lastLabel = r.label;
+      }
+      let timer,
+        seq = 0;
+      async function analyzeNow(celebrate = false) {
+        const text = $('#input').value.trim();
+        $('#count').textContent = `${$('#input').value.length} / 1500`;
+        if (!text) {
+          render(null);
+          return null;
+        }
+        const my = ++seq,
+          r = await predict(text);
+        if (my === seq) render(r, { celebrate });
+        return r;
+      }
+      $('#input').addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => analyzeNow(), 420);
+        $('#count').textContent = `${$('#input').value.length} / 1500`;
+      });
+      $('#input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('#go').click();
+      });
+      $('#clear').addEventListener('click', () => {
+        $('#input').value = '';
+        analyzeNow();
+        $('#input').focus();
+      });
+      $('#go').addEventListener('click', async () => {
+        if (!$('#input').value.trim()) return $('#input').focus();
+        const r = await analyzeNow(true);
+        if (r) saveHistory(r);
+      });
+      $('#surprise').addEventListener('click', async () => {
+        const pool = [...SAMPLES.map((s) => s[1]), ...MORE];
+        let t;
+        do {
+          t = pool[Math.floor(Math.random() * pool.length)];
+        } while (t === $('#input').value);
+        $('#input').value = t;
+        const r = await analyzeNow(true);
+        if (r) saveHistory(r);
+      });
+
+      /* typewriter placeholder */
+      (function () {
+        const lines = [
+          'The crew was lovely and the flight was smooth…',
+          'Lost my bag and nobody could help me…',
+          'I need to change my booking to Friday…',
+        ];
+        let li = 0,
+          ci = 0,
+          del = false;
+        const ta = $('#input');
+        if (reduce) {
+          ta.placeholder = lines[0];
+          return;
+        }
+        (function tick() {
+          const line = lines[li];
+          ta.placeholder = line.slice(0, ci) + (ci % 2 ? '' : '|');
+          if (!del && ci < line.length) {
+            ci++;
+            setTimeout(tick, 55);
+          } else if (!del) {
+            del = true;
+            setTimeout(tick, 1500);
+          } else if (ci > 0) {
+            ci--;
+            setTimeout(tick, 22);
+          } else {
+            del = false;
+            li = (li + 1) % lines.length;
+            setTimeout(tick, 350);
+          }
+        })();
+      })();
+
+      /* ---------- history ---------- */
+      let history = [];
+      try {
+        history = JSON.parse(localStorage.getItem('Moodora_history') || '[]');
+      } catch (e) {}
+      function saveHistory(r) {
+        history.unshift({
+          text: r.text,
+          label: r.label,
+          conf: r.probs[r.label],
+          t: Date.now(),
+        });
+        history = history.slice(0, 50);
+        try {
+          localStorage.setItem('Moodora_history', JSON.stringify(history));
+        } catch (e) {}
+      }
+      function ago(t) {
+        const s = (Date.now() - t) / 1000;
+        return s < 60
+          ? 'just now'
+          : s < 3600
+            ? Math.floor(s / 60) + ' min ago'
+            : s < 86400
+              ? Math.floor(s / 3600) + ' h ago'
+              : new Date(t).toLocaleDateString();
+      }
+      function renderHistory() {
+        $('#hist').innerHTML = history.length
+          ? history
+              .map(
+                (h, i) =>
+                  `<li data-i="${i}" style="animation-delay:${Math.min(i, 12) * 50}ms"><i class="dot" style="background:${META[h.label].color}"></i><div><b>${META[h.label].title}</b> · ${Math.round(h.conf * 100)}%<br><span style="color:var(--muted)">${esc(h.text.length > 110 ? h.text.slice(0, 110) + '…' : h.text)}</span></div><span class="when">${ago(h.t)}</span></li>`,
+              )
+              .join('')
+          : `<li class="empty" style="display:block;cursor:default"><b>Nothing here yet</b>Analyze a text and press “Analyze text”. It will show up here.</li>`;
+      }
+      $('#hist').addEventListener('click', (e) => {
+        const li = e.target.closest('li[data-i]');
+        if (!li) return;
+        $('#input').value = history[li.dataset.i].text;
+        $('nav button[data-tab=analyze]').click();
+        analyzeNow(true);
+      });
+      $('#wipe').addEventListener('click', () => {
+        history = [];
+        try {
+          localStorage.removeItem('Moodora_history');
+        } catch (e) {}
+        renderHistory();
+      });
+
+      /* ---------- batch ---------- */
+      let lastBatch = [];
+      function parseCSVLine(line) {
+        const out = [];
+        let cur = '',
+          q = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"') {
+            if (q && line[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else q = !q;
+          } else if (c === ',' && !q) {
+            out.push(cur);
+            cur = '';
+          } else cur += c;
+        }
+        out.push(cur);
+        return out;
+      }
+      $('#file').addEventListener('change', async (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        const raw = (await f.text())
+          .replace(/\r/g, '')
+          .split('\n')
+          .filter((l) => l.trim());
+        let texts = raw;
+        if (f.name.toLowerCase().endsWith('.csv') && raw.length) {
+          const head = parseCSVLine(raw[0]).map((h) => h.trim().toLowerCase());
+          let idx = head.indexOf('text');
+          const hasHead = idx >= 0;
+          if (idx < 0) idx = 0;
+          texts = raw
+            .slice(hasHead ? 1 : 0)
+            .map((l) => (parseCSVLine(l)[idx] || '').trim());
+        }
+        $('#batchIn').value = texts.filter(Boolean).join('\n');
+        e.target.value = '';
+      });
+      $('#batchGo').addEventListener('click', async () => {
+        const texts = $('#batchIn')
+          .value.split('\n')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, 2000);
+        if (!texts.length) return $('#batchIn').focus();
+        const res = await predictBatch(texts);
+        lastBatch = res;
+        const n = res.length,
+          cnt = { negative: 0, neutral: 0, positive: 0 };
+        res.forEach((r) => cnt[r.label]++);
+        $('#batchOut').hidden = false;
+        $('#export').hidden = false;
+        const C = 2 * Math.PI * 44;
+        let cum = 0;
+        $('#donutSvg').innerHTML =
+          `<circle cx="60" cy="60" r="44" stroke="rgba(74,29,51,.08)" style="stroke-dasharray:none"/>` +
+          LABELS.map(
+            (k) =>
+              `<circle class="arc" data-k="${k}" cx="60" cy="60" r="44" stroke="${META[k].color}" style="stroke-dasharray:0 ${C}" />`,
+          ).join('');
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            $$('#donutSvg .arc').forEach((a) => {
+              const f = cnt[a.dataset.k] / n,
+                len = f * C;
+              a.style.strokeDasharray = `${Math.max(0, len - (f < 1 ? 2 : 0))} ${C}`;
+              a.style.strokeDashoffset = -cum;
+              cum += len;
+            });
+          }),
+        );
+        countTo($('#donutN'), n);
+        $('#legend').innerHTML = LABELS.map(
+          (k) =>
+            `<span style="--c:${META[k].color}"><b>${META[k].title}</b> ${cnt[k]} (${Math.round((cnt[k] / n) * 100)}%)</span>`,
+        ).join('');
+        $('#batchBody').innerHTML = res
+          .map((r, i) => {
+            const p = Math.round(r.probs[r.label] * 100);
+            return `<tr style="animation-delay:${Math.min(i, 24) * 45}ms"><td class="t">${esc(r.text)}</td><td><span class="tag ${r.label}">${META[r.label].title}</span></td><td><div class="mini"><i style="width:${p * 0.9}px;background:${META[r.label].color}"></i>${p}%</div></td></tr>`;
+          })
+          .join('');
+        if (!reduce) {
+          const top = LABELS.reduce((a, b) => (cnt[a] >= cnt[b] ? a : b));
+          burst(top === 'negative' ? 'neutral' : top);
+        }
+      });
+      $('#export').addEventListener('click', () => {
+        const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
+        const csv =
+          'text,label,confidence\n' +
+          lastBatch
+            .map((r) => [q(r.text), r.label, r.probs[r.label]].join(','))
+            .join('\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+        a.download = 'moodora_results.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+
+      /* ---------- model report ---------- */
+      async function loadMetrics() {
+        const box = $('#metricsBox');
+        let m = null;
+        if (backend.up) {
+          try {
+            const r = await fetch(API + '/api/metrics');
+            if (r.ok) m = await r.json();
+          } catch (e) {}
+        }
+        if (!m) {
+          box.innerHTML = `<div class="empty"><b>No evaluation report yet</b>Train the model first. It writes <span class="code">metrics.json</span> next to <span class="code">app.py</span>.</div>`;
+          return;
+        }
+        const L = m.labels || LABELS,
+          pc = m.per_class || {},
+          cm = m.confusion_matrix || [];
+        const pct = (v) => (v * 100).toFixed(1) + '%',
+          max = Math.max(1, ...cm.flat());
+        const ring = (id, val, col, name) =>
+          `<div class="kpi"><div class="ring"><svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="r-${id}" data-v="${val}" cx="40" cy="40" r="34" stroke="${col}"/></svg><b id="k-${id}">0%</b></div><span>${name}</span></div>`;
+        box.innerHTML = `
+    <h2>${esc(m.model_name || 'Classifier')}</h2>
+    <div class="kpis">${ring('mf', m.macro_f1, '#934372', 'Macro F1-score')}${ring('wf', m.weighted_f1, '#536CA5', 'Weighted F1-score')}${ring('ac', m.accuracy, '#B9689F', 'Accuracy')}</div>
+    <div class="two">
+      <div>
+        <h2 style="font-size:1.15rem">F1-score per class</h2>
+        ${L.map((k) => {
+          const s = pc[k] || {};
+          return `<div class="f1row"><span class="tag ${k}" style="justify-self:start">${META[k].title}</span><div class="track"><div class="fill f1b" data-w="${(s.f1 || 0) * 100}" style="background-color:${META[k].color}"></div></div><b>${pct(s.f1 || 0)}</b></div>`;
+        }).join('')}
+        <div class="tablewrap"><table><thead><tr><th>Class</th><th>Precision</th><th>Recall</th><th>Support</th></tr></thead><tbody>
+        ${L.map((k) => {
+          const s = pc[k] || {};
+          return `<tr><td>${META[k].title}</td><td>${pct(s.precision || 0)}</td><td>${pct(s.recall || 0)}</td><td>${s.support ?? '–'}</td></tr>`;
+        }).join('')}
+        </tbody></table></div>
+      </div>
+      <div>
+        <h2 style="font-size:1.15rem">Confusion matrix</h2>
+        <p style="font-size:.85rem;color:var(--muted)">Rows = true class, columns = predicted class</p>
+        <div class="cm"><span></span>${L.map((k) => `<span class="h">${META[k].title}</span>`).join('')}
+        ${cm
+          .map(
+            (row, i) =>
+              `<span class="h">${META[L[i]].title}</span>` +
+              row
+                .map((v, j) => {
+                  const a = 0.22 + (0.78 * v) / max;
+                  return `<span class="c" style="background:color-mix(in srgb,${META[L[j]].color} ${Math.round(a * 100)}%,#fff);color:${a > 0.6 ? '#fff' : '#4A1D33'};animation-delay:${(i * 3 + j) * 70}ms">${v}</span>`;
+                })
+                .join(''),
+          )
+          .join('')}
+        </div>
+      </div>
+    </div>`;
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            $$('.ring .fg').forEach((c) => {
+              const v = +c.dataset.v;
+              c.style.strokeDashoffset = 213.6 * (1 - v);
+              countTo(
+                $('#k-' + c.id.slice(2)),
+                v * 100,
+                (x) => x.toFixed(1) + '%',
+                1300,
+              );
+            });
+            $$('.f1b').forEach((b) => (b.style.width = b.dataset.w + '%'));
+          }),
+        );
+      }
+
+      /* ---------- start ---------- */
+      (async () => {
+        await checkHealth();
+        render(null);
+        setInterval(checkHealth, 15000);
+      })();
+    </script>
+  </body>
+</html>

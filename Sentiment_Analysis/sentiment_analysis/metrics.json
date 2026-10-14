@@ -1,0 +1,174 @@
+{
+  "model_name": "Logistic Regression + word/char TF-IDF + VADER",
+  "labels": [
+    "negative",
+    "neutral",
+    "positive"
+  ],
+  "accuracy": 0.7244,
+  "macro_f1": 0.718,
+  "weighted_f1": 0.7249,
+  "per_class": {
+    "negative": {
+      "precision": 0.7797,
+      "recall": 0.7405,
+      "f1": 0.7596,
+      "support": 3853
+    },
+    "neutral": {
+      "precision": 0.683,
+      "recall": 0.7332,
+      "f1": 0.7072,
+      "support": 3062
+    },
+    "positive": {
+      "precision": 0.6922,
+      "recall": 0.682,
+      "f1": 0.6871,
+      "support": 2104
+    }
+  },
+  "confusion_matrix": [
+    [
+      2853,
+      679,
+      321
+    ],
+    [
+      500,
+      2245,
+      317
+    ],
+    [
+      306,
+      363,
+      1435
+    ]
+  ],
+  "train_size": 41070,
+  "test_size": 9019,
+  "selected_params": {
+    "C": 1.0,
+    "vader_weight": 1.0,
+    "neutral_weight_multiplier": 1.3
+  },
+  "domain_results": [
+    {
+      "domain": "airline",
+      "description": "Airline tweets (3 classes)",
+      "n": 2886,
+      "macro_f1": 0.7429,
+      "accuracy": 0.8004,
+      "neutral_f1": 0.6117
+    },
+    {
+      "domain": "movie",
+      "description": "Movie sentences (3 classes, neutral = objective plot sentences)",
+      "n": 3133,
+      "macro_f1": 0.7657,
+      "accuracy": 0.7648,
+      "neutral_f1": 0.8407
+    },
+    {
+      "domain": "tweeteval",
+      "description": "General tweets (3 classes, human-labelled neutral)",
+      "n": 3000,
+      "macro_f1": 0.5891,
+      "accuracy": 0.609,
+      "neutral_f1": 0.6565
+    }
+  ],
+  "airline_per_class": {
+    "negative": {
+      "precision": 0.8729,
+      "recall": 0.8811,
+      "f1": 0.877,
+      "support": 1816
+    },
+    "neutral": {
+      "precision": 0.6372,
+      "recall": 0.5882,
+      "f1": 0.6117,
+      "support": 612
+    },
+    "positive": {
+      "precision": 0.7172,
+      "recall": 0.7642,
+      "f1": 0.74,
+      "support": 458
+    }
+  },
+  "ablation": [
+    {
+      "name": "M0  Airline only  (first version)",
+      "airline_macro_f1": 0.7322,
+      "airline_neutral_f1": 0.6075,
+      "movie_macro_f1": 0.4308,
+      "tweeteval_macro_f1": 0.4944,
+      "challenge_accuracy": 0.7
+    },
+    {
+      "name": "M1  + more domains",
+      "airline_macro_f1": 0.7007,
+      "airline_neutral_f1": 0.5395,
+      "movie_macro_f1": 0.7397,
+      "tweeteval_macro_f1": 0.5382,
+      "challenge_accuracy": 0.7333
+    },
+    {
+      "name": "M2  + negation marking",
+      "airline_macro_f1": 0.7108,
+      "airline_neutral_f1": 0.5542,
+      "movie_macro_f1": 0.7426,
+      "tweeteval_macro_f1": 0.5445,
+      "challenge_accuracy": 0.7667
+    },
+    {
+      "name": "M3  + VADER & style features",
+      "airline_macro_f1": 0.722,
+      "airline_neutral_f1": 0.557,
+      "movie_macro_f1": 0.7368,
+      "tweeteval_macro_f1": 0.5776,
+      "challenge_accuracy": 0.7333
+    },
+    {
+      "name": "M4  + char n-grams, neutral weight",
+      "airline_macro_f1": 0.7429,
+      "airline_neutral_f1": 0.6117,
+      "movie_macro_f1": 0.7657,
+      "tweeteval_macro_f1": 0.5891,
+      "challenge_accuracy": 0.8333
+    }
+  ],
+  "challenge": {
+    "n": 30,
+    "accuracy": 0.8333,
+    "errors": [
+      {
+        "text": "The movie was far better than I expected.",
+        "true": "positive",
+        "pred": "negative"
+      },
+      {
+        "text": "I couldn't be happier with this purchase.",
+        "true": "positive",
+        "pred": "negative"
+      },
+      {
+        "text": "This laptop is fast, light and the battery lasts all day.",
+        "true": "positive",
+        "pred": "neutral"
+      },
+      {
+        "text": "No complaints at all, everything arrived on time.",
+        "true": "positive",
+        "pred": "negative"
+      },
+      {
+        "text": "The package was delivered to the front desk.",
+        "true": "neutral",
+        "pred": "negative"
+      }
+    ]
+  }
+}
